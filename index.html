@@ -39,24 +39,45 @@
       flex-direction: column;
       width: 100vw;
       height: 100vh;
+      height: 100dvh; /* Soporte para viewports dinámicos en móviles */
       position: relative;
     }
 
     /* Barra Superior */
     header {
-      height: 56px;
+      height: 50px;
       display: flex;
       align-items: center;
       justify-content: space-between;
       padding: 0 16px;
       background-color: #F8F9FA;
       z-index: 10;
+      flex-shrink: 0;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
 
     .header-title {
-      font-size: 17px;
+      font-size: 16px;
       font-weight: 600;
       color: #1A1A1A;
+    }
+
+    /* Botón Visibles para Instalar PWA */
+    .install-pwa-btn {
+      display: none; /* Se muestra automáticamente si Chrome permite instalar */
+      background-color: #E5E5EA;
+      color: #007AFF;
+      border: none;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
     }
 
     .save-btn {
@@ -71,15 +92,12 @@
       box-shadow: 0 2px 6px rgba(0, 122, 255, 0.2);
     }
 
-    .save-btn:active {
-      opacity: 0.8;
-    }
-
-    /* Áreas Principales */
+    /* Área Principal */
     main {
       flex: 1;
       position: relative;
       background-color: #F8F9FA;
+      overflow: hidden;
     }
 
     canvas {
@@ -92,23 +110,23 @@
     /* Palette Barra Lateral Izquierda */
     .color-palette {
       position: absolute;
-      left: 12px;
-      top: 50%;
+      left: 10px;
+      top: 45%;
       transform: translateY(-50%);
       display: flex;
       flex-direction: column;
-      gap: 16px;
-      background: rgba(255, 255, 255, 0.85);
+      gap: 14px;
+      background: rgba(255, 255, 255, 0.9);
       backdrop-filter: blur(10px);
-      padding: 12px 8px;
-      border-radius: 24px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+      padding: 10px 6px;
+      border-radius: 20px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.06);
       z-index: 10;
     }
 
     .color-dot {
-      width: 26px;
-      height: 26px;
+      width: 24px;
+      height: 24px;
       border-radius: 50%;
       cursor: pointer;
       position: relative;
@@ -127,33 +145,32 @@
       border-radius: 50%;
     }
 
-    /* Colores */
     .color-black  { background-color: #1C1C1E; }
     .color-red    { background-color: #FF3B30; }
     .color-blue   { background-color: #007AFF; }
     .color-green  { background-color: #34C759; }
     .color-yellow { background-color: #FFCC00; }
 
-    /* Cambio sutil de confirmación */
     .color-green.trigger-active {
       background-color: #28A745;
     }
 
-    /* Barra Flotante Inferior */
+    /* Barra Flotante Inferior (Ajustada para que NUNCA se salga de pantalla) */
     .bottom-bar {
       position: absolute;
-      bottom: 20px;
+      bottom: calc(12px + env(safe-area-inset-bottom)); /* Respeta área segura de móviles */
       left: 50%;
       transform: translateX(-50%);
       display: flex;
       align-items: center;
-      gap: 16px;
-      background: rgba(255, 255, 255, 0.9);
+      gap: 12px;
+      background: rgba(255, 255, 255, 0.92);
       backdrop-filter: blur(12px);
-      padding: 8px 18px;
-      border-radius: 30px;
-      box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+      padding: 6px 14px;
+      border-radius: 28px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.1);
       z-index: 10;
+      max-width: 90vw;
     }
 
     .tool-btn {
@@ -163,46 +180,31 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      width: 36px;
-      height: 36px;
+      width: 34px;
+      height: 34px;
       border-radius: 50%;
       cursor: pointer;
     }
 
     .tool-btn.active {
       color: #007AFF;
-      background-color: rgba(0, 122, 255, 0.1);
+      background-color: rgba(0, 122, 255, 0.12);
     }
 
     .thickness-slider {
-      width: 90px;
+      width: 75px;
       accent-color: #007AFF;
-    }
-
-    /* Prompt de instalación PWA sutil */
-    #pwa-install-banner {
-      display: none;
-      position: absolute;
-      top: 60px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(30, 30, 30, 0.85);
-      color: white;
-      padding: 6px 14px;
-      border-radius: 12px;
-      font-size: 12px;
-      z-index: 20;
-      backdrop-filter: blur(5px);
     }
   </style>
 </head>
 <body>
 
   <div id="app-container">
-    <div id="pwa-install-banner">Añadir a la pantalla de inicio</div>
-
     <header>
-      <span class="header-title">Nota sin título</span>
+      <div class="header-left">
+        <span class="header-title">Nota sin título</span>
+        <button class="install-pwa-btn" id="install-btn">Instalar App</button>
+      </div>
       <button class="save-btn" id="save-btn">Guardar</button>
     </header>
 
@@ -230,10 +232,8 @@
   </div>
 
   <script>
-    // Inicializar Iconos
     lucide.createIcons();
 
-    // Referencias DOM
     const canvas = document.getElementById('paintCanvas');
     const ctx = canvas.getContext('2d');
     const saveBtn = document.getElementById('save-btn');
@@ -242,9 +242,8 @@
     const thicknessSlider = document.getElementById('thickness-slider');
     const colorDots = document.querySelectorAll('.color-dot');
     const greenDot = document.getElementById('green-dot');
-    const installBanner = document.getElementById('pwa-install-banner');
+    const installBtn = document.getElementById('install-btn');
 
-    // Manejo de Canvas Resizing
     function resizeCanvas() {
       const rect = canvas.getBoundingClientRect();
       canvas.width = rect.width * window.devicePixelRatio;
@@ -254,25 +253,21 @@
     }
     window.addEventListener('resize', resizeCanvas);
 
-    // Estados
     const STATE_RECORDING = 1;
     const STATE_FREE = 2;
     const STATE_REVEAL = 3;
     let currentState = STATE_RECORDING;
 
-    // Ajustes de dibujo
     let currentColor = '#1C1C1E';
     let currentThickness = 4;
     let isEraser = false;
     let isDrawing = false;
 
-    // Estructuras de datos
-    let savedDrawingData = []; // Trazos Fase 1
-    let freeDrawingData = [];  // Trazos Fase 2
+    let savedDrawingData = []; 
+    let freeDrawingData = [];  
     let currentStroke = null;
     let strokeStartTime = 0;
 
-    // Inicializar Canvas
     setTimeout(resizeCanvas, 50);
 
     function getCanvasCoords(e) {
@@ -286,7 +281,6 @@
       };
     }
 
-    // Dibujado en vivo
     function startDrawing(e) {
       if (currentState === STATE_REVEAL) return;
       isDrawing = true;
@@ -333,7 +327,6 @@
       currentStroke = null;
     }
 
-    // Listeners Eventos de Dibujo
     canvas.addEventListener('mousedown', startDrawing);
     canvas.addEventListener('mousemove', draw);
     canvas.addEventListener('mouseup', stopDrawing);
@@ -342,7 +335,6 @@
     canvas.addEventListener('touchmove', (e) => { e.preventDefault(); draw(e); });
     canvas.addEventListener('touchend', (e) => { e.preventDefault(); stopDrawing(); });
 
-    // Botón Guardar (Cambio de Estado 1 a Estado 2)
     saveBtn.addEventListener('click', () => {
       if (currentState === STATE_RECORDING) {
         currentState = STATE_FREE;
@@ -350,7 +342,6 @@
       }
     });
 
-    // Herramientas UI
     colorDots.forEach(dot => {
       dot.addEventListener('click', () => {
         colorDots.forEach(d => d.classList.remove('active'));
@@ -396,7 +387,7 @@
       });
     }
 
-    // DISPARADOR SECRETO (Long Press 2000ms en el lápiz)
+    // DISPARADOR SECRETO (Long Press 2000ms)
     let triggerTimer = null;
 
     function startTriggerHold() {
@@ -414,21 +405,15 @@
     pencilBtn.addEventListener('mouseup', cancelTriggerHold);
 
     function activateMagicCountdown() {
-      // Feedback táctil (Vibración)
       if (navigator.vibrate) {
         navigator.vibrate([100, 50, 100]);
       }
-
-      // Feedback visual sutil para el mago
       greenDot.classList.add('trigger-active');
-
-      // Temporizador de 20 Segundos
       setTimeout(() => {
         executeGhostReveal();
       }, 20000);
     }
 
-    // ESTADO 3: REVELACIÓN FANTASMA
     function executeGhostReveal() {
       currentState = STATE_REVEAL;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -437,11 +422,8 @@
 
       let strokeIndex = 0;
       let pointIndex = 0;
-      let startTime = null;
 
-      function renderFrame(timestamp) {
-        if (!startTime) startTime = timestamp;
-
+      function renderFrame() {
         const currentStroke = savedDrawingData[strokeIndex];
         if (!currentStroke) return;
 
@@ -477,27 +459,37 @@
       requestAnimationFrame(renderFrame);
     }
 
-    // Registro Service Worker
+    // REGISTRO DEL SERVICE WORKER
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW registration failed: ', err));
+        navigator.serviceWorker.register('./sw.js')
+          .then(reg => console.log('SW registrado correctamente:', reg.scope))
+          .catch(err => console.error('Error al registrar SW:', err));
       });
     }
 
-    // PWA Prompt
-    let deferredPrompt;
+    // MANEJO DE INSTALACIÓN NATIVA PWA (Chrome/Android/Escritorio)
+    let deferredPrompt = null;
+
     window.addEventListener('beforeinstallprompt', (e) => {
+      // Prevenir que el navegador lo muestre automáticamente
       e.preventDefault();
       deferredPrompt = e;
-      installBanner.style.display = 'block';
+      // Mostrar nuestro botón de instalación
+      installBtn.style.display = 'inline-block';
     });
 
-    installBanner.addEventListener('click', () => {
-      installBanner.style.display = 'none';
-      if (deferredPrompt) {
-        deferredPrompt.prompt();
-        deferredPrompt.userChoice.then(() => { deferredPrompt = null; });
-      }
+    installBtn.addEventListener('click', () => {
+      if (!deferredPrompt) return;
+      // Lanzar diálogo nativo de instalación
+      deferredPrompt.prompt();
+      deferredPrompt.userChoice.then((choiceResult) => {
+        if (choiceResult.outcome === 'accepted') {
+          console.log('El usuario aceptó la instalación');
+        }
+        deferredPrompt = null;
+        installBtn.style.display = 'none';
+      });
     });
   </script>
 </body>

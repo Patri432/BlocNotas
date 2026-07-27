@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Notas</title>
   
-  <!-- Meta etiquetas para PWA -->
+  <!-- Meta etiquetas PWA -->
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#F8F9FA">
   <meta name="mobile-web-app-capable" content="yes">
@@ -75,7 +75,6 @@
       gap: 8px;
     }
 
-    /* Botón Sutil de Instalación PWA */
     .install-pwa-btn {
       display: none;
       align-items: center;
@@ -91,10 +90,6 @@
       transition: background-color 0.2s ease;
     }
 
-    .install-pwa-btn:active {
-      background-color: rgba(0, 122, 255, 0.2);
-    }
-
     .save-btn {
       background-color: #007AFF;
       color: white;
@@ -105,7 +100,9 @@
       font-weight: 500;
       cursor: pointer;
       box-shadow: 0 2px 6px rgba(0, 122, 255, 0.2);
-      transition: background-color 0.2s;
+      transition: all 0.2s;
+      position: relative;
+      overflow: hidden;
     }
 
     .save-btn:disabled {
@@ -215,15 +212,15 @@
       accent-color: #007AFF;
     }
 
-    /* Mensaje de Estado / Cuenta atrás */
+    /* Overlay de Cuenta atrás */
     #status-overlay {
       position: absolute;
-      top: 70px;
+      top: 20px;
       left: 50%;
       transform: translateX(-50%);
-      background: rgba(0, 0, 0, 0.75);
+      background: rgba(0, 0, 0, 0.8);
       color: white;
-      padding: 6px 16px;
+      padding: 8px 18px;
       border-radius: 20px;
       font-size: 14px;
       font-weight: 500;
@@ -241,16 +238,15 @@
         <span class="header-title">Mi Nota</span>
       </div>
       <div class="header-right">
-        <!-- Botón de Instalación PWA -->
         <button class="install-pwa-btn" id="install-btn">
           <i data-lucide="download" style="width:14px; height:14px;"></i> Instalar app
         </button>
-        <button class="save-btn" id="save-btn">Guardar</button>
+        <button class="save-btn" id="save-btn" title="Mantén pulsado 1 seg para guardar">Mantén para Guardar</button>
       </div>
     </header>
 
     <main>
-      <div id="status-overlay">Esperando 5 segundos para reproducir...</div>
+      <div id="status-overlay">Iniciando...</div>
 
       <div class="color-palette" id="palette">
         <div class="color-dot color-black active" data-color="#1C1C1E"></div>
@@ -299,9 +295,10 @@
     let isEraser = false;
     let isDrawing = false;
 
+    // VARIABLE GLOBAL DE TRAZOS Y CONGELADO EN MEMORIA
     let savedDrawingData = [];  
+    let frozenDrawingData = [];
     let currentStroke = null;
-    let strokeStartTime = 0;
 
     function resizeCanvas() {
       const rect = canvas.getBoundingClientRect();
@@ -354,14 +351,13 @@
       if (currentState !== STATE_RECORDING) return;
       isDrawing = true;
       const point = getCanvasCoords(e);
-      strokeStartTime = point.t;
 
       currentStroke = {
         color: currentColor,
         thickness: currentThickness,
         isEraser: isEraser,
         startTime: point.t,
-        points: [{ x: point.x, y: point.y, t: 0 }]
+        points: [{ x: point.x, y: point.y, t: point.t }]
       };
 
       setupContext(isEraser, currentColor, currentThickness);
@@ -372,9 +368,8 @@
     function draw(e) {
       if (!isDrawing || currentState !== STATE_RECORDING) return;
       const point = getCanvasCoords(e);
-      const relativeTime = point.t - strokeStartTime;
 
-      currentStroke.points.push({ x: point.x, y: point.y, t: relativeTime });
+      currentStroke.points.push({ x: point.x, y: point.y, t: point.t });
 
       ctx.lineTo(point.x, point.y);
       ctx.stroke();
@@ -401,11 +396,34 @@
     canvas.addEventListener('touchmove', (e) => { e.preventDefault(); draw(e); }, { passive: false });
     canvas.addEventListener('touchend', (e) => { e.preventDefault(); stopDrawing(); }, { passive: false });
 
-    // Botón Guardar: inicia la espera de 5 segundos y luego la reproducción fluida
-    saveBtn.addEventListener('click', () => {
+    // LÓGICA DE PULSACIÓN PROLONGADA (LONG PRESS) EN BOTÓN GUARDAR
+    let pressTimer = null;
+    const LONG_PRESS_DURATION = 1000; // 1 segundo para activar
+
+    function startPress(e) {
       if (currentState !== STATE_RECORDING) return;
+      pressTimer = setTimeout(() => {
+        executeSaveAndPlaybackSequence();
+      }, LONG_PRESS_DURATION);
+    }
+
+    function cancelPress() {
+      if (pressTimer) {
+        clearTimeout(pressTimer);
+        pressTimer = null;
+      }
+    }
+
+    saveBtn.addEventListener('mousedown', startPress);
+    saveBtn.addEventListener('mouseup', cancelPress);
+    saveBtn.addEventListener('mouseleave', cancelPress);
+    saveBtn.addEventListener('touchstart', (e) => { startPress(e); }, { passive: true });
+    saveBtn.addEventListener('touchend', cancelPress);
+
+    // FASE 1 & FASE 2: CONGELADO Y SECUENCIA DE ESPERA DE 5 SEGUNDOS
+    function executeSaveAndPlaybackSequence() {
       if (savedDrawingData.length === 0) {
-        alert('Dibuja algo primero antes de guardar.');
+        alert('Dibuja algo primero en el lienzo.');
         return;
       }
 
@@ -413,11 +431,15 @@
       saveBtn.disabled = true;
       palette.style.opacity = '0.3';
       bottomBar.style.opacity = '0.3';
-      
-      // Limpiar lienzo para empezar la cuenta atrás y la animación limpia
+
+      // 1. Congelar el array de trazos en memoria (copia profunda)
+      frozenDrawingData = JSON.parse(JSON.stringify(savedDrawingData));
+
+      // 2. Borrar el lienzo por completo
       const rect = canvas.getBoundingClientRect();
       ctx.clearRect(0, 0, rect.width, rect.height);
-      
+
+      // 3. Esperar 5 segundos mostrando la cuenta regresiva
       let secondsLeft = 5;
       statusOverlay.style.display = 'block';
       statusOverlay.textContent = `Reproduciendo en ${secondsLeft}s...`;
@@ -429,30 +451,30 @@
         } else {
           clearInterval(countdownInterval);
           statusOverlay.style.display = 'none';
-          startSmoothPlayback();
+          // 4. Reproducir en tiempo real
+          playDrawingInRealTime();
         }
       }, 1000);
-    });
+    }
 
-    // REPRODUCCIÓN ANIMADA Y PROGRESIVA
-    function startSmoothPlayback() {
+    // REPRODUCCIÓN PUNTO POR PUNTO (requestAnimationFrame)
+    function playDrawingInRealTime() {
       currentState = STATE_PLAYING;
       const rect = canvas.getBoundingClientRect();
       ctx.clearRect(0, 0, rect.width, rect.height);
 
-      if (savedDrawingData.length === 0) return;
+      if (frozenDrawingData.length === 0) return;
 
-      // Unificamos los puntos guardados en una sola línea de tiempo
+      // Unificamos todos los puntos en una sola línea de tiempo ordenada
       let timelinePoints = [];
-      const baseTime = savedDrawingData[0].startTime;
+      const globalStartTime = frozenDrawingData[0].points[0].t;
 
-      savedDrawingData.forEach(stroke => {
-        const strokeOffset = stroke.startTime - baseTime;
+      frozenDrawingData.forEach(stroke => {
         stroke.points.forEach((pt, index) => {
           timelinePoints.push({
             x: pt.x,
             y: pt.y,
-            time: strokeOffset + pt.t,
+            delay: pt.t - globalStartTime, // Tiempo relativo preciso
             color: stroke.color,
             thickness: stroke.thickness,
             isEraser: stroke.isEraser,
@@ -469,15 +491,14 @@
         if (!animationStartTime) animationStartTime = timestamp;
         const elapsedTime = timestamp - animationStartTime;
 
-        // Procesamos los puntos que deben haber aparecido hasta el tiempo actual
-        while (pointIndex < timelinePoints.length && timelinePoints[pointIndex].time <= elapsedTime) {
+        // Renderiza todos los puntos que coincidan con el tiempo transcurrido
+        while (pointIndex < timelinePoints.length && timelinePoints[pointIndex].delay <= elapsedTime) {
           const pt = timelinePoints[pointIndex];
 
           if (pt.isStart) {
             setupContext(pt.isEraser, pt.color, pt.thickness);
             lastPoint = pt;
           } else if (lastPoint) {
-            // Dibujamos el segmento del trazo punto a punto progresivamente
             ctx.beginPath();
             ctx.moveTo(lastPoint.x, lastPoint.y);
             ctx.lineTo(pt.x, pt.y);
@@ -491,7 +512,7 @@
         if (pointIndex < timelinePoints.length) {
           requestAnimationFrame(renderFrame);
         } else {
-          // Final de la reproducción: reactivamos los controles por si quiere volver a dibujar
+          // Fin de la animación: Reactiva herramientas y restaura estado
           currentState = STATE_RECORDING;
           saveBtn.disabled = false;
           palette.style.opacity = '1';

@@ -294,6 +294,7 @@
     let currentThickness = 4;
     let isEraser = false;
     let isDrawing = false;
+    let dpr = window.devicePixelRatio || 1;
 
     // VARIABLE GLOBAL DE TRAZOS Y CONGELADO EN MEMORIA
     let savedDrawingData = [];  
@@ -302,11 +303,38 @@
 
     function resizeCanvas() {
       const rect = canvas.getBoundingClientRect();
-      const dpr = window.devicePixelRatio || 1;
+      dpr = window.devicePixelRatio || 1;
       
       canvas.width = rect.width * dpr;
       canvas.height = rect.height * dpr;
       ctx.scale(dpr, dpr);
+      
+      redrawCanvas();
+    }
+
+    function redrawCanvas() {
+      const rect = canvas.getBoundingClientRect();
+      ctx.clearRect(0, 0, rect.width, rect.height);
+      
+      const dataToDraw = currentState === STATE_PLAYING ? frozenDrawingData : savedDrawingData;
+      
+      dataToDraw.forEach(stroke => {
+        if (!stroke.points || stroke.points.length === 0) return;
+        setupContext(stroke.isEraser, stroke.color, stroke.thickness);
+        
+        if (stroke.points.length === 1) {
+          ctx.beginPath();
+          ctx.arc(stroke.points[0].x, stroke.points[0].y, stroke.thickness / 2, 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          ctx.beginPath();
+          ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
+          for (let i = 1; i < stroke.points.length; i++) {
+            ctx.lineTo(stroke.points[i].x, stroke.points[i].y);
+          }
+          ctx.stroke();
+        }
+      });
     }
 
     window.addEventListener('resize', resizeCanvas);
@@ -341,9 +369,11 @@
       
       if (eraser) {
         ctx.globalCompositeOperation = 'destination-out';
+        ctx.fillStyle = 'rgba(0,0,0,1)';
       } else {
         ctx.globalCompositeOperation = 'source-over';
         ctx.strokeStyle = color;
+        ctx.fillStyle = color;
       }
     }
 
@@ -396,12 +426,13 @@
     canvas.addEventListener('touchmove', (e) => { e.preventDefault(); draw(e); }, { passive: false });
     canvas.addEventListener('touchend', (e) => { e.preventDefault(); stopDrawing(); }, { passive: false });
 
-    // LÓGICA DE PULSACIÓN PROLONGADA (LONG PRESS) EN BOTÓN GUARDAR
+    // LONG PRESS EN BOTÓN GUARDAR (1 SEGUNDO DE PULSACIÓN)
     let pressTimer = null;
-    const LONG_PRESS_DURATION = 1000; // 1 segundo para activar
+    const LONG_PRESS_DURATION = 1000;
 
     function startPress(e) {
       if (currentState !== STATE_RECORDING) return;
+      cancelPress();
       pressTimer = setTimeout(() => {
         executeSaveAndPlaybackSequence();
       }, LONG_PRESS_DURATION);
@@ -417,10 +448,10 @@
     saveBtn.addEventListener('mousedown', startPress);
     saveBtn.addEventListener('mouseup', cancelPress);
     saveBtn.addEventListener('mouseleave', cancelPress);
-    saveBtn.addEventListener('touchstart', (e) => { startPress(e); }, { passive: true });
+    saveBtn.addEventListener('touchstart', startPress, { passive: true });
     saveBtn.addEventListener('touchend', cancelPress);
 
-    // FASE 1 & FASE 2: CONGELADO Y SECUENCIA DE ESPERA DE 5 SEGUNDOS
+    // SECUENCIA: CONGELAR, ESPERAR 5 SEGUNDOS Y REPRODUCIR
     function executeSaveAndPlaybackSequence() {
       if (savedDrawingData.length === 0) {
         alert('Dibuja algo primero en el lienzo.');
@@ -432,7 +463,7 @@
       palette.style.opacity = '0.3';
       bottomBar.style.opacity = '0.3';
 
-      // 1. Congelar el array de trazos en memoria (copia profunda)
+      // 1. Congelar y guardar el array de trazos en memoria (copia profunda)
       frozenDrawingData = JSON.parse(JSON.stringify(savedDrawingData));
 
       // 2. Borrar el lienzo por completo
@@ -451,13 +482,14 @@
         } else {
           clearInterval(countdownInterval);
           statusOverlay.style.display = 'none';
-          // 4. Reproducir en tiempo real
+          
+          // 4. Reproducir en tiempo real usando requestAnimationFrame
           playDrawingInRealTime();
         }
       }, 1000);
     }
 
-    // REPRODUCCIÓN PUNTO POR PUNTO (requestAnimationFrame)
+    // REPRODUCCIÓN PUNTO POR PUNTO RESPETANDO TIEMPO, PAUSAS Y PROPIEDADES
     function playDrawingInRealTime() {
       currentState = STATE_PLAYING;
       const rect = canvas.getBoundingClientRect();
@@ -465,7 +497,7 @@
 
       if (frozenDrawingData.length === 0) return;
 
-      // Unificamos todos los puntos en una sola línea de tiempo ordenada
+      // Unificar todos los puntos de todos los trazos con su tiempo relativo exacto
       let timelinePoints = [];
       const globalStartTime = frozenDrawingData[0].points[0].t;
 
@@ -474,11 +506,12 @@
           timelinePoints.push({
             x: pt.x,
             y: pt.y,
-            delay: pt.t - globalStartTime, // Tiempo relativo preciso
+            delay: pt.t - globalStartTime, // Tiempo en ms relativo al inicio
             color: stroke.color,
             thickness: stroke.thickness,
             isEraser: stroke.isEraser,
-            isStart: index === 0
+            isStart: index === 0,
+            isSinglePoint: stroke.points.length === 1
           });
         });
       });
@@ -491,12 +524,20 @@
         if (!animationStartTime) animationStartTime = timestamp;
         const elapsedTime = timestamp - animationStartTime;
 
-        // Renderiza todos los puntos que coincidan con el tiempo transcurrido
+        // Renderizar todos los puntos acumulados hasta el tiempo actual
         while (pointIndex < timelinePoints.length && timelinePoints[pointIndex].delay <= elapsedTime) {
           const pt = timelinePoints[pointIndex];
 
+          setupContext(pt.isEraser, pt.color, pt.thickness);
+
           if (pt.isStart) {
-            setupContext(pt.isEraser, pt.color, pt.thickness);
+            ctx.beginPath();
+            if (pt.isSinglePoint) {
+              ctx.arc(pt.x, pt.y, pt.thickness / 2, 0, Math.PI * 2);
+              ctx.fill();
+            } else {
+              ctx.moveTo(pt.x, pt.y);
+            }
             lastPoint = pt;
           } else if (lastPoint) {
             ctx.beginPath();
@@ -512,7 +553,7 @@
         if (pointIndex < timelinePoints.length) {
           requestAnimationFrame(renderFrame);
         } else {
-          // Fin de la animación: Reactiva herramientas y restaura estado
+          // Fin de la animación: reactivar interfaz
           currentState = STATE_RECORDING;
           saveBtn.disabled = false;
           palette.style.opacity = '1';
@@ -523,7 +564,7 @@
       requestAnimationFrame(renderFrame);
     }
 
-    // Selector de colores
+    // Selector de herramientas y colores
     colorDots.forEach(dot => {
       dot.addEventListener('click', () => {
         if (currentState !== STATE_RECORDING) return;

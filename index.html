@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+    <!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
@@ -39,13 +39,13 @@
       flex-direction: column;
       width: 100vw;
       height: 100vh;
-      height: 100dvh; /* Soporte para viewports dinámicos en móviles */
+      height: 100dvh;
       position: relative;
     }
 
     /* Barra Superior */
     header {
-      height: 50px;
+      height: 52px;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -58,7 +58,7 @@
     .header-left {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 12px;
     }
 
     .header-title {
@@ -67,9 +67,9 @@
       color: #1A1A1A;
     }
 
-    /* Botón Visibles para Instalar PWA */
+    /* Botón nativo PWA (Oculto por defecto, visible cuando Chrome activa beforeinstallprompt) */
     .install-pwa-btn {
-      display: none; /* Se muestra automáticamente si Chrome permite instalar */
+      display: none;
       background-color: #E5E5EA;
       color: #007AFF;
       border: none;
@@ -78,6 +78,10 @@
       font-size: 12px;
       font-weight: 600;
       cursor: pointer;
+    }
+
+    .install-pwa-btn:active {
+      opacity: 0.7;
     }
 
     .save-btn {
@@ -107,7 +111,7 @@
       touch-action: none;
     }
 
-    /* Palette Barra Lateral Izquierda */
+    /* Paleta Vertical Izquierda */
     .color-palette {
       position: absolute;
       left: 10px;
@@ -155,10 +159,10 @@
       background-color: #28A745;
     }
 
-    /* Barra Flotante Inferior (Ajustada para que NUNCA se salga de pantalla) */
+    /* Barra Flotante Inferior */
     .bottom-bar {
       position: absolute;
-      bottom: calc(12px + env(safe-area-inset-bottom)); /* Respeta área segura de móviles */
+      bottom: calc(14px + env(safe-area-inset-bottom));
       left: 50%;
       transform: translateX(-50%);
       display: flex;
@@ -192,7 +196,7 @@
     }
 
     .thickness-slider {
-      width: 75px;
+      width: 80px;
       accent-color: #007AFF;
     }
   </style>
@@ -387,7 +391,7 @@
       });
     }
 
-    // DISPARADOR SECRETO (Long Press 2000ms)
+    // DISPARADOR SECRETO (Pulsación prolongada de 2000ms en el botón lápiz)
     let triggerTimer = null;
 
     function startTriggerHold() {
@@ -459,33 +463,33 @@
       requestAnimationFrame(renderFrame);
     }
 
-    // REGISTRO DEL SERVICE WORKER
+    // REGISTRO DEL SERVICE WORKER (Específico para PWA)
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('./sw.js')
-          .then(reg => console.log('SW registrado correctamente:', reg.scope))
+          .then(reg => console.log('SW activo en:', reg.scope))
           .catch(err => console.error('Error al registrar SW:', err));
       });
     }
 
-    // MANEJO DE INSTALACIÓN NATIVA PWA (Chrome/Android/Escritorio)
+    // CAPTURA DEL EVENTO NATIVO `beforeinstallprompt` EN CHROME
     let deferredPrompt = null;
 
     window.addEventListener('beforeinstallprompt', (e) => {
-      // Prevenir que el navegador lo muestre automáticamente
+      // Evita que el navegador lance el prompt automático y guarda la referencia
       e.preventDefault();
       deferredPrompt = e;
-      // Mostrar nuestro botón de instalación
+      // Muestra el botón de instalación en la interfaz
       installBtn.style.display = 'inline-block';
     });
 
     installBtn.addEventListener('click', () => {
       if (!deferredPrompt) return;
-      // Lanzar diálogo nativo de instalación
+      // Lanza el diálogo nativo de instalación de Chrome
       deferredPrompt.prompt();
       deferredPrompt.userChoice.then((choiceResult) => {
         if (choiceResult.outcome === 'accepted') {
-          console.log('El usuario aceptó la instalación');
+          console.log('El usuario instaló la PWA');
         }
         deferredPrompt = null;
         installBtn.style.display = 'none';

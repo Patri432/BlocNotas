@@ -296,7 +296,6 @@
     let isDrawing = false;
     let dpr = window.devicePixelRatio || 1;
 
-    // VARIABLE GLOBAL DE TRAZOS Y CONGELADO EN MEMORIA
     let savedDrawingData = [];  
     let frozenDrawingData = [];
     let currentStroke = null;
@@ -463,14 +462,11 @@
       palette.style.opacity = '0.3';
       bottomBar.style.opacity = '0.3';
 
-      // 1. Congelar y guardar el array de trazos en memoria (copia profunda)
       frozenDrawingData = JSON.parse(JSON.stringify(savedDrawingData));
 
-      // 2. Borrar el lienzo por completo
       const rect = canvas.getBoundingClientRect();
       ctx.clearRect(0, 0, rect.width, rect.height);
 
-      // 3. Esperar 5 segundos mostrando la cuenta regresiva
       let secondsLeft = 5;
       statusOverlay.style.display = 'block';
       statusOverlay.textContent = `Reproduciendo en ${secondsLeft}s...`;
@@ -483,13 +479,12 @@
           clearInterval(countdownInterval);
           statusOverlay.style.display = 'none';
           
-          // 4. Reproducir en tiempo real usando requestAnimationFrame
           playDrawingInRealTime();
         }
       }, 1000);
     }
 
-    // REPRODUCCIÓN PUNTO POR PUNTO RESPETANDO TIEMPO, PAUSAS Y PROPIEDADES
+    // REPRODUCCIÓN PROGRESIVA PUNTO A PUNTO
     function playDrawingInRealTime() {
       currentState = STATE_PLAYING;
       const rect = canvas.getBoundingClientRect();
@@ -497,7 +492,7 @@
 
       if (frozenDrawingData.length === 0) return;
 
-      // Unificar todos los puntos de todos los trazos con su tiempo relativo exacto
+      // Descomponemos todos los puntos reteniendo su orden y tiempos
       let timelinePoints = [];
       const globalStartTime = frozenDrawingData[0].points[0].t;
 
@@ -506,7 +501,7 @@
           timelinePoints.push({
             x: pt.x,
             y: pt.y,
-            delay: pt.t - globalStartTime, // Tiempo en ms relativo al inicio
+            delay: pt.t - globalStartTime,
             color: stroke.color,
             thickness: stroke.thickness,
             isEraser: stroke.isEraser,
@@ -524,22 +519,22 @@
         if (!animationStartTime) animationStartTime = timestamp;
         const elapsedTime = timestamp - animationStartTime;
 
-        // Renderizar todos los puntos acumulados hasta el tiempo actual
+        // Procesa solo los puntos cuyo tiempo ya ha llegado en este frame
         while (pointIndex < timelinePoints.length && timelinePoints[pointIndex].delay <= elapsedTime) {
           const pt = timelinePoints[pointIndex];
 
           setupContext(pt.isEraser, pt.color, pt.thickness);
 
           if (pt.isStart) {
-            ctx.beginPath();
+            // Iniciar un nuevo trazo
             if (pt.isSinglePoint) {
+              ctx.beginPath();
               ctx.arc(pt.x, pt.y, pt.thickness / 2, 0, Math.PI * 2);
               ctx.fill();
-            } else {
-              ctx.moveTo(pt.x, pt.y);
             }
             lastPoint = pt;
           } else if (lastPoint) {
+            // Trazar una línea recta continua desde el punto anterior al actual
             ctx.beginPath();
             ctx.moveTo(lastPoint.x, lastPoint.y);
             ctx.lineTo(pt.x, pt.y);
@@ -553,7 +548,6 @@
         if (pointIndex < timelinePoints.length) {
           requestAnimationFrame(renderFrame);
         } else {
-          // Fin de la animación: reactivar interfaz
           currentState = STATE_RECORDING;
           saveBtn.disabled = false;
           palette.style.opacity = '1';

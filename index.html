@@ -434,7 +434,7 @@
       }, 1000);
     });
 
-    // Reproducción animada y fluida trazo por trazo
+    // REPRODUCCIÓN ANIMADA Y PROGRESIVA
     function startSmoothPlayback() {
       currentState = STATE_PLAYING;
       const rect = canvas.getBoundingClientRect();
@@ -442,6 +442,7 @@
 
       if (savedDrawingData.length === 0) return;
 
+      // Unificamos los puntos guardados en una sola línea de tiempo
       let timelinePoints = [];
       const baseTime = savedDrawingData[0].startTime;
 
@@ -462,26 +463,26 @@
 
       let animationStartTime = null;
       let pointIndex = 0;
-      let isPathOpen = false;
+      let lastPoint = null;
 
       function renderFrame(timestamp) {
         if (!animationStartTime) animationStartTime = timestamp;
         const elapsedTime = timestamp - animationStartTime;
 
+        // Procesamos los puntos que deben haber aparecido hasta el tiempo actual
         while (pointIndex < timelinePoints.length && timelinePoints[pointIndex].time <= elapsedTime) {
           const pt = timelinePoints[pointIndex];
 
           if (pt.isStart) {
-            if (isPathOpen) {
-              ctx.stroke();
-            }
             setupContext(pt.isEraser, pt.color, pt.thickness);
+            lastPoint = pt;
+          } else if (lastPoint) {
+            // Dibujamos el segmento del trazo punto a punto progresivamente
             ctx.beginPath();
-            ctx.moveTo(pt.x, pt.y);
-            isPathOpen = true;
-          } else {
+            ctx.moveTo(lastPoint.x, lastPoint.y);
             ctx.lineTo(pt.x, pt.y);
             ctx.stroke();
+            lastPoint = pt;
           }
 
           pointIndex++;
@@ -490,10 +491,11 @@
         if (pointIndex < timelinePoints.length) {
           requestAnimationFrame(renderFrame);
         } else {
-          if (isPathOpen) {
-            ctx.stroke();
-          }
-          // Permitir volver a editar u ocultar controles al terminar si se desea
+          // Final de la reproducción: reactivamos los controles por si quiere volver a dibujar
+          currentState = STATE_RECORDING;
+          saveBtn.disabled = false;
+          palette.style.opacity = '1';
+          bottomBar.style.opacity = '1';
         }
       }
 

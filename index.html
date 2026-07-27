@@ -1,11 +1,11 @@
-  <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Notas</title>
   
-  <!-- Meta etiquetas para PWA (Aparece sin interfaz del navegador al abrir) -->
+  <!-- Meta etiquetas para PWA -->
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#F8F9FA">
   <meta name="mobile-web-app-capable" content="yes">
@@ -105,6 +105,12 @@
       font-weight: 500;
       cursor: pointer;
       box-shadow: 0 2px 6px rgba(0, 122, 255, 0.2);
+      transition: background-color 0.2s;
+    }
+
+    .save-btn:disabled {
+      background-color: #A0C4FF;
+      cursor: not-allowed;
     }
 
     /* Áreas Principales */
@@ -137,6 +143,7 @@
       border-radius: 20px;
       box-shadow: 0 4px 12px rgba(0,0,0,0.06);
       z-index: 10;
+      transition: opacity 0.2s;
     }
 
     .color-dot {
@@ -166,11 +173,6 @@
     .color-green  { background-color: #34C759; }
     .color-yellow { background-color: #FFCC00; }
 
-    .color-green.trigger-active {
-      background-color: #28A745;
-      box-shadow: 0 0 8px #28A745;
-    }
-
     /* Barra Flotante Inferior */
     .bottom-bar {
       position: absolute;
@@ -187,6 +189,7 @@
       box-shadow: 0 4px 16px rgba(0,0,0,0.1);
       z-index: 10;
       max-width: 90vw;
+      transition: opacity 0.2s;
     }
 
     .tool-btn {
@@ -211,6 +214,23 @@
       width: 80px;
       accent-color: #007AFF;
     }
+
+    /* Mensaje de Estado / Cuenta atrás */
+    #status-overlay {
+      position: absolute;
+      top: 70px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.75);
+      color: white;
+      padding: 6px 16px;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: 500;
+      z-index: 20;
+      display: none;
+      backdrop-filter: blur(4px);
+    }
   </style>
 </head>
 <body>
@@ -230,17 +250,19 @@
     </header>
 
     <main>
-      <div class="color-palette">
+      <div id="status-overlay">Esperando 5 segundos para reproducir...</div>
+
+      <div class="color-palette" id="palette">
         <div class="color-dot color-black active" data-color="#1C1C1E"></div>
         <div class="color-dot color-red" data-color="#FF3B30"></div>
         <div class="color-dot color-blue" data-color="#007AFF"></div>
-        <div class="color-dot color-green" id="green-dot" data-color="#34C759"></div>
+        <div class="color-dot color-green" data-color="#34C759"></div>
         <div class="color-dot color-yellow" data-color="#FFCC00"></div>
       </div>
 
       <canvas id="paintCanvas"></canvas>
 
-      <div class="bottom-bar">
+      <div class="bottom-bar" id="bottom-bar">
         <button class="tool-btn active" id="pencil-btn">
           <i data-lucide="pencil"></i>
         </button>
@@ -262,12 +284,14 @@
     const eraserBtn = document.getElementById('eraser-btn');
     const thicknessSlider = document.getElementById('thickness-slider');
     const colorDots = document.querySelectorAll('.color-dot');
-    const greenDot = document.getElementById('green-dot');
     const installBtn = document.getElementById('install-btn');
+    const statusOverlay = document.getElementById('status-overlay');
+    const palette = document.getElementById('palette');
+    const bottomBar = document.getElementById('bottom-bar');
 
     const STATE_RECORDING = 1;
-    const STATE_FREE = 2;
-    const STATE_REVEAL = 3;
+    const STATE_WAITING = 2;
+    const STATE_PLAYING = 3;
     let currentState = STATE_RECORDING;
 
     let currentColor = '#1C1C1E';
@@ -275,8 +299,7 @@
     let isEraser = false;
     let isDrawing = false;
 
-    let savedDrawingData = []; 
-    let freeDrawingData = [];  
+    let savedDrawingData = [];  
     let currentStroke = null;
     let strokeStartTime = 0;
 
@@ -287,8 +310,6 @@
       canvas.width = rect.width * dpr;
       canvas.height = rect.height * dpr;
       ctx.scale(dpr, dpr);
-      
-      redrawState2();
     }
 
     window.addEventListener('resize', resizeCanvas);
@@ -330,7 +351,7 @@
     }
 
     function startDrawing(e) {
-      if (currentState === STATE_REVEAL) return;
+      if (currentState !== STATE_RECORDING) return;
       isDrawing = true;
       const point = getCanvasCoords(e);
       strokeStartTime = point.t;
@@ -349,13 +370,11 @@
     }
 
     function draw(e) {
-      if (!isDrawing || currentState === STATE_REVEAL) return;
+      if (!isDrawing || currentState !== STATE_RECORDING) return;
       const point = getCanvasCoords(e);
       const relativeTime = point.t - strokeStartTime;
 
-      if (currentState === STATE_RECORDING) {
-        currentStroke.points.push({ x: point.x, y: point.y, t: relativeTime });
-      }
+      currentStroke.points.push({ x: point.x, y: point.y, t: relativeTime });
 
       ctx.lineTo(point.x, point.y);
       ctx.stroke();
@@ -366,15 +385,13 @@
       isDrawing = false;
       ctx.closePath();
 
-      if (currentState === STATE_RECORDING && currentStroke) {
+      if (currentStroke && currentStroke.points.length > 0) {
         savedDrawingData.push(currentStroke);
-      } else if (currentState === STATE_FREE && currentStroke) {
-        freeDrawingData.push(currentStroke);
       }
       currentStroke = null;
     }
 
-    // Eventos
+    // Eventos de dibujo
     canvas.addEventListener('mousedown', startDrawing);
     canvas.addEventListener('mousemove', draw);
     canvas.addEventListener('mouseup', stopDrawing);
@@ -384,92 +401,42 @@
     canvas.addEventListener('touchmove', (e) => { e.preventDefault(); draw(e); }, { passive: false });
     canvas.addEventListener('touchend', (e) => { e.preventDefault(); stopDrawing(); }, { passive: false });
 
+    // Botón Guardar: inicia la espera de 5 segundos y luego la reproducción fluida
     saveBtn.addEventListener('click', () => {
-      if (currentState === STATE_RECORDING) {
-        currentState = STATE_FREE;
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      if (currentState !== STATE_RECORDING) return;
+      if (savedDrawingData.length === 0) {
+        alert('Dibuja algo primero antes de guardar.');
+        return;
       }
-    });
 
-    colorDots.forEach(dot => {
-      dot.addEventListener('click', () => {
-        colorDots.forEach(d => d.classList.remove('active'));
-        dot.classList.add('active');
-        currentColor = dot.dataset.color;
-        isEraser = false;
-        pencilBtn.classList.add('active');
-        eraserBtn.classList.remove('active');
-      });
-    });
-
-    pencilBtn.addEventListener('click', () => {
-      isEraser = false;
-      pencilBtn.classList.add('active');
-      eraserBtn.classList.remove('active');
-    });
-
-    eraserBtn.addEventListener('click', () => {
-      isEraser = true;
-      eraserBtn.classList.add('active');
-      pencilBtn.classList.remove('active');
-    });
-
-    thicknessSlider.addEventListener('input', (e) => {
-      currentThickness = parseFloat(e.target.value);
-    });
-
-    function redrawState2() {
-      if (currentState !== STATE_FREE) return;
+      currentState = STATE_WAITING;
+      saveBtn.disabled = true;
+      palette.style.opacity = '0.3';
+      bottomBar.style.opacity = '0.3';
+      
+      // Limpiar lienzo para empezar la cuenta atrás y la animación limpia
       const rect = canvas.getBoundingClientRect();
       ctx.clearRect(0, 0, rect.width, rect.height);
-
-      freeDrawingData.forEach(stroke => {
-        if (!stroke.points || stroke.points.length === 0) return;
-        
-        setupContext(stroke.isEraser, stroke.color, stroke.thickness);
-        ctx.beginPath();
-        ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
-        for (let i = 1; i < stroke.points.length; i++) {
-          ctx.lineTo(stroke.points[i].x, stroke.points[i].y);
-        }
-        ctx.stroke();
-      });
-    }
-
-    // DISPARADOR SECRETO (Pulsación prolongada en el lápiz)
-    let triggerTimer = null;
-
-    function startTriggerHold(e) {
-      if (currentState !== STATE_FREE) return;
-      triggerTimer = setTimeout(activateMagicCountdown, 500);
-    }
-
-    function cancelTriggerHold() {
-      if (triggerTimer) {
-        clearTimeout(triggerTimer);
-        triggerTimer = null;
-      }
-    }
-
-    pencilBtn.addEventListener('touchstart', startTriggerHold, { passive: true });
-    pencilBtn.addEventListener('touchend', cancelTriggerHold);
-    pencilBtn.addEventListener('mousedown', startTriggerHold);
-    pencilBtn.addEventListener('mouseup', cancelTriggerHold);
-    pencilBtn.addEventListener('mouseleave', cancelTriggerHold);
-
-    function activateMagicCountdown() {
-      if (navigator.vibrate) {
-        navigator.vibrate([100, 50, 100]);
-      }
-      greenDot.classList.add('trigger-active');
       
-      setTimeout(() => {
-        executeGhostReveal();
-      }, 10000);
-    }
+      let secondsLeft = 5;
+      statusOverlay.style.display = 'block';
+      statusOverlay.textContent = `Reproduciendo en ${secondsLeft}s...`;
 
-    function executeGhostReveal() {
-      currentState = STATE_REVEAL;
+      const countdownInterval = setInterval(() => {
+        secondsLeft--;
+        if (secondsLeft > 0) {
+          statusOverlay.textContent = `Reproduciendo en ${secondsLeft}s...`;
+        } else {
+          clearInterval(countdownInterval);
+          statusOverlay.style.display = 'none';
+          startSmoothPlayback();
+        }
+      }, 1000);
+    });
+
+    // Reproducción animada y fluida trazo por trazo
+    function startSmoothPlayback() {
+      currentState = STATE_PLAYING;
       const rect = canvas.getBoundingClientRect();
       ctx.clearRect(0, 0, rect.width, rect.height);
 
@@ -508,7 +475,6 @@
             if (isPathOpen) {
               ctx.stroke();
             }
-            
             setupContext(pt.isEraser, pt.color, pt.thickness);
             ctx.beginPath();
             ctx.moveTo(pt.x, pt.y);
@@ -523,15 +489,49 @@
 
         if (pointIndex < timelinePoints.length) {
           requestAnimationFrame(renderFrame);
-        } else if (isPathOpen) {
-          ctx.stroke();
+        } else {
+          if (isPathOpen) {
+            ctx.stroke();
+          }
+          // Permitir volver a editar u ocultar controles al terminar si se desea
         }
       }
 
       requestAnimationFrame(renderFrame);
     }
 
-    // REGISTRO SERVICE WORKER
+    // Selector de colores
+    colorDots.forEach(dot => {
+      dot.addEventListener('click', () => {
+        if (currentState !== STATE_RECORDING) return;
+        colorDots.forEach(d => d.classList.remove('active'));
+        dot.classList.add('active');
+        currentColor = dot.dataset.color;
+        isEraser = false;
+        pencilBtn.classList.add('active');
+        eraserBtn.classList.remove('active');
+      });
+    });
+
+    pencilBtn.addEventListener('click', () => {
+      if (currentState !== STATE_RECORDING) return;
+      isEraser = false;
+      pencilBtn.classList.add('active');
+      eraserBtn.classList.remove('active');
+    });
+
+    eraserBtn.addEventListener('click', () => {
+      if (currentState !== STATE_RECORDING) return;
+      isEraser = true;
+      eraserBtn.classList.add('active');
+      pencilBtn.classList.remove('active');
+    });
+
+    thicknessSlider.addEventListener('input', (e) => {
+      currentThickness = parseFloat(e.target.value);
+    });
+
+    // SERVICE WORKER PWA
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('./sw.js')

@@ -5,9 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Notas</title>
   
-  <!-- Configuración PWA Meta -->
+  <!-- Meta etiquetas para PWA (Aparece sin interfaz del navegador al abrir) -->
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#F8F9FA">
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Notas">
@@ -45,7 +46,7 @@
 
     /* Barra Superior */
     header {
-      height: 52px;
+      height: 56px;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -53,35 +54,45 @@
       background-color: #F8F9FA;
       z-index: 10;
       flex-shrink: 0;
+      border-bottom: 1px solid rgba(0,0,0,0.05);
     }
 
     .header-left {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
     }
 
     .header-title {
-      font-size: 16px;
+      font-size: 18px;
       font-weight: 600;
       color: #1A1A1A;
     }
 
-    /* Botón/Aviso Sutil de Instalación PWA */
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Botón Sutil de Instalación PWA */
     .install-pwa-btn {
       display: none;
-      background-color: #E5E5EA;
+      align-items: center;
+      gap: 4px;
+      background-color: rgba(0, 122, 255, 0.1);
       color: #007AFF;
       border: none;
-      padding: 4px 10px;
-      border-radius: 12px;
-      font-size: 12px;
+      padding: 6px 12px;
+      border-radius: 16px;
+      font-size: 13px;
       font-weight: 600;
       cursor: pointer;
+      transition: background-color 0.2s ease;
     }
 
     .install-pwa-btn:active {
-      opacity: 0.7;
+      background-color: rgba(0, 122, 255, 0.2);
     }
 
     .save-btn {
@@ -207,10 +218,15 @@
   <div id="app-container">
     <header>
       <div class="header-left">
-        <span class="header-title">Nota sin título</span>
-        <button class="install-pwa-btn" id="install-btn">Instalar App</button>
+        <span class="header-title">Mi Nota</span>
       </div>
-      <button class="save-btn" id="save-btn">Guardar</button>
+      <div class="header-right">
+        <!-- Botón de Instalación PWA -->
+        <button class="install-pwa-btn" id="install-btn">
+          <i data-lucide="download" style="width:14px; height:14px;"></i> Instalar app
+        </button>
+        <button class="save-btn" id="save-btn">Guardar</button>
+      </div>
     </header>
 
     <main>
@@ -358,13 +374,12 @@
       currentStroke = null;
     }
 
-    // Eventos de ratón
+    // Eventos
     canvas.addEventListener('mousedown', startDrawing);
     canvas.addEventListener('mousemove', draw);
     canvas.addEventListener('mouseup', stopDrawing);
     canvas.addEventListener('mouseleave', stopDrawing);
 
-    // Eventos táctiles
     canvas.addEventListener('touchstart', (e) => { e.preventDefault(); startDrawing(e); }, { passive: false });
     canvas.addEventListener('touchmove', (e) => { e.preventDefault(); draw(e); }, { passive: false });
     canvas.addEventListener('touchend', (e) => { e.preventDefault(); stopDrawing(); }, { passive: false });
@@ -421,7 +436,7 @@
       });
     }
 
-    // DISPARADOR SECRETO (Pulsación prolongada de 2000ms en el botón lápiz)
+    // DISPARADOR SECRETO (Pulsación prolongada en el lápiz)
     let triggerTimer = null;
 
     function startTriggerHold(e) {
@@ -448,13 +463,11 @@
       }
       greenDot.classList.add('trigger-active');
       
-      // 10 Segundos exactos
       setTimeout(() => {
         executeGhostReveal();
       }, 10000);
     }
 
-    // REVELACIÓN FANTASMA EN TIEMPO REAL (DIBUJO FLUIDO PUNTO A PUNTO)
     function executeGhostReveal() {
       currentState = STATE_REVEAL;
       const rect = canvas.getBoundingClientRect();
@@ -522,18 +535,18 @@
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('./sw.js')
-          .then(reg => console.log('SW activo en:', reg.scope))
+          .then(reg => console.log('Service Worker listo'))
           .catch(err => console.error('Error SW:', err));
       });
     }
 
-    // MANEJO PWA
+    // INSTALACIÓN PWA
     let deferredPrompt = null;
 
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
       deferredPrompt = e;
-      installBtn.style.display = 'inline-block';
+      installBtn.style.display = 'inline-flex';
     });
 
     installBtn.addEventListener('click', () => {

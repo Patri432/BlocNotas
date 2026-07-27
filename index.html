@@ -1,241 +1,4 @@
-    <!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>Notas</title>
-  
-  <!-- Configuración PWA Meta -->
-  <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#F8F9FA">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="apple-mobile-web-app-title" content="Notas">
-  <link rel="apple-touch-icon" href="icon-192.png">
-
-  <!-- Iconos Lucide (CDN) -->
-  <script src="https://unpkg.com/lucide@latest"></script>
-
-  <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      user-select: none;
-      -webkit-user-select: none;
-      -webkit-touch-callout: none;
-    }
-
-    body, html {
-      width: 100%;
-      height: 100%;
-      overflow: hidden;
-      background-color: #F8F9FA;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    }
-
-    #app-container {
-      display: flex;
-      flex-direction: column;
-      width: 100vw;
-      height: 100vh;
-      height: 100dvh;
-      position: relative;
-    }
-
-    /* Barra Superior */
-    header {
-      height: 52px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 16px;
-      background-color: #F8F9FA;
-      z-index: 10;
-      flex-shrink: 0;
-    }
-
-    .header-left {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .header-title {
-      font-size: 16px;
-      font-weight: 600;
-      color: #1A1A1A;
-    }
-
-    /* Botón nativo PWA (Oculto por defecto, visible cuando Chrome activa beforeinstallprompt) */
-    .install-pwa-btn {
-      display: none;
-      background-color: #E5E5EA;
-      color: #007AFF;
-      border: none;
-      padding: 4px 10px;
-      border-radius: 12px;
-      font-size: 12px;
-      font-weight: 600;
-      cursor: pointer;
-    }
-
-    .install-pwa-btn:active {
-      opacity: 0.7;
-    }
-
-    .save-btn {
-      background-color: #007AFF;
-      color: white;
-      border: none;
-      padding: 6px 14px;
-      border-radius: 18px;
-      font-size: 14px;
-      font-weight: 500;
-      cursor: pointer;
-      box-shadow: 0 2px 6px rgba(0, 122, 255, 0.2);
-    }
-
-    /* Área Principal */
-    main {
-      flex: 1;
-      position: relative;
-      background-color: #F8F9FA;
-      overflow: hidden;
-    }
-
-    canvas {
-      width: 100%;
-      height: 100%;
-      display: block;
-      touch-action: none;
-    }
-
-    /* Paleta Vertical Izquierda */
-    .color-palette {
-      position: absolute;
-      left: 10px;
-      top: 45%;
-      transform: translateY(-50%);
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-      background: rgba(255, 255, 255, 0.9);
-      backdrop-filter: blur(10px);
-      padding: 10px 6px;
-      border-radius: 20px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.06);
-      z-index: 10;
-    }
-
-    .color-dot {
-      width: 24px;
-      height: 24px;
-      border-radius: 50%;
-      cursor: pointer;
-      position: relative;
-      transition: transform 0.15s ease;
-    }
-
-    .color-dot.active {
-      transform: scale(1.15);
-    }
-
-    .color-dot.active::after {
-      content: '';
-      position: absolute;
-      top: -3px; left: -3px; right: -3px; bottom: -3px;
-      border: 2px solid rgba(0,0,0,0.15);
-      border-radius: 50%;
-    }
-
-    .color-black  { background-color: #1C1C1E; }
-    .color-red    { background-color: #FF3B30; }
-    .color-blue   { background-color: #007AFF; }
-    .color-green  { background-color: #34C759; }
-    .color-yellow { background-color: #FFCC00; }
-
-    .color-green.trigger-active {
-      background-color: #28A745;
-    }
-
-    /* Barra Flotante Inferior */
-    .bottom-bar {
-      position: absolute;
-      bottom: calc(14px + env(safe-area-inset-bottom));
-      left: 50%;
-      transform: translateX(-50%);
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      background: rgba(255, 255, 255, 0.92);
-      backdrop-filter: blur(12px);
-      padding: 6px 14px;
-      border-radius: 28px;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.1);
-      z-index: 10;
-      max-width: 90vw;
-    }
-
-    .tool-btn {
-      background: none;
-      border: none;
-      color: #666;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 34px;
-      height: 34px;
-      border-radius: 50%;
-      cursor: pointer;
-    }
-
-    .tool-btn.active {
-      color: #007AFF;
-      background-color: rgba(0, 122, 255, 0.12);
-    }
-
-    .thickness-slider {
-      width: 80px;
-      accent-color: #007AFF;
-    }
-  </style>
-</head>
-<body>
-
-  <div id="app-container">
-    <header>
-      <div class="header-left">
-        <span class="header-title">Nota sin título</span>
-        <button class="install-pwa-btn" id="install-btn">Instalar App</button>
-      </div>
-      <button class="save-btn" id="save-btn">Guardar</button>
-    </header>
-
-    <main>
-      <div class="color-palette">
-        <div class="color-dot color-black active" data-color="#1C1C1E"></div>
-        <div class="color-dot color-red" data-color="#FF3B30"></div>
-        <div class="color-dot color-blue" data-color="#007AFF"></div>
-        <div class="color-dot color-green" id="green-dot" data-color="#34C759"></div>
-        <div class="color-dot color-yellow" data-color="#FFCC00"></div>
-      </div>
-
-      <canvas id="paintCanvas"></canvas>
-
-      <div class="bottom-bar">
-        <button class="tool-btn active" id="pencil-btn">
-          <i data-lucide="pencil"></i>
-        </button>
-        <button class="tool-btn" id="eraser-btn">
-          <i data-lucide="eraser"></i>
-        </button>
-        <input type="range" class="thickness-slider" id="thickness-slider" min="1" max="30" value="4">
-      </div>
-    </main>
-  </div>
-
-  <script>
+   <script>
     lucide.createIcons();
 
     const canvas = document.getElementById('paintCanvas');
@@ -295,6 +58,7 @@
         color: currentColor,
         thickness: currentThickness,
         isEraser: isEraser,
+        startTime: point.t, // Marca de tiempo absoluta de inicio del trazo
         points: [{ x: point.x, y: point.y, t: 0 }]
       };
 
@@ -391,12 +155,12 @@
       });
     }
 
-    // DISPARADOR SECRETO (Pulsación prolongada de 2000ms en el botón lápiz)
+    // DISPARADOR SECRETO (Long Press 2000ms en el botón lápiz)
     let triggerTimer = null;
 
     function startTriggerHold() {
       if (currentState !== STATE_FREE) return;
-      triggerTimer = setTimeout(activateMagicCountdown, 2000);
+      triggerTimer = setTimeout(activateMagicCountdown, 1000);
     }
 
     function cancelTriggerHold() {
@@ -418,83 +182,89 @@
       }, 20000);
     }
 
+    // ESTADO 3: REVELACIÓN FANTASMA CON TIEMPO REAL FIEL AL DIBUJO ORIGINAL
     function executeGhostReveal() {
       currentState = STATE_REVEAL;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       if (savedDrawingData.length === 0) return;
 
-      let strokeIndex = 0;
+      // Unificar todos los trazos en un timeline vectorial continuo
+      let timelinePoints = [];
+      const baseTime = savedDrawingData[0].startTime;
+
+      savedDrawingData.forEach(stroke => {
+        const strokeOffset = stroke.startTime - baseTime;
+        stroke.points.forEach((pt, index) => {
+          timelinePoints.push({
+            x: pt.x,
+            y: pt.y,
+            time: strokeOffset + pt.t,
+            color: stroke.color,
+            thickness: stroke.thickness,
+            isEraser: stroke.isEraser,
+            isStart: index === 0
+          });
+        });
+      });
+
+      let animationStartTime = null;
       let pointIndex = 0;
 
-      function renderFrame() {
-        const currentStroke = savedDrawingData[strokeIndex];
-        if (!currentStroke) return;
+      function renderFrame(timestamp) {
+        if (!animationStartTime) animationStartTime = timestamp;
+        const elapsedTime = timestamp - animationStartTime;
 
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-        ctx.strokeStyle = currentStroke.isEraser ? '#F8F9FA' : currentStroke.color;
-        ctx.lineWidth = currentStroke.thickness;
+        while (pointIndex < timelinePoints.length && timelinePoints[pointIndex].time <= elapsedTime) {
+          const pt = timelinePoints[pointIndex];
 
-        if (pointIndex === 0) {
-          ctx.beginPath();
-          const p0 = currentStroke.points[0];
-          ctx.moveTo(p0.x, p0.y);
-          pointIndex = 1;
-        }
+          ctx.lineCap = 'round';
+          ctx.lineJoin = 'round';
+          ctx.strokeStyle = pt.isEraser ? '#F8F9FA' : pt.color;
+          ctx.lineWidth = pt.thickness;
 
-        while (pointIndex < currentStroke.points.length) {
-          const p = currentStroke.points[pointIndex];
-          ctx.lineTo(p.x, p.y);
-          ctx.stroke();
+          if (pt.isStart || pointIndex === 0) {
+            ctx.beginPath();
+            ctx.moveTo(pt.x, pt.y);
+          } else {
+            ctx.lineTo(pt.x, pt.y);
+            ctx.stroke();
+          }
+
           pointIndex++;
         }
 
-        strokeIndex++;
-        pointIndex = 0;
-
-        if (strokeIndex < savedDrawingData.length) {
-          setTimeout(() => {
-            requestAnimationFrame(renderFrame);
-          }, 300);
+        if (pointIndex < timelinePoints.length) {
+          requestAnimationFrame(renderFrame);
         }
       }
 
       requestAnimationFrame(renderFrame);
     }
 
-    // REGISTRO DEL SERVICE WORKER (Específico para PWA)
+    // REGISTRO SERVICE WORKER PWA
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('./sw.js')
-          .then(reg => console.log('SW activo en:', reg.scope))
-          .catch(err => console.error('Error al registrar SW:', err));
+          .then(reg => console.log('SW activo'))
+          .catch(err => console.error('Error SW:', err));
       });
     }
 
-    // CAPTURA DEL EVENTO NATIVO `beforeinstallprompt` EN CHROME
+    // MANEJO INSTALACIÓN CHROME
     let deferredPrompt = null;
-
     window.addEventListener('beforeinstallprompt', (e) => {
-      // Evita que el navegador lance el prompt automático y guarda la referencia
       e.preventDefault();
       deferredPrompt = e;
-      // Muestra el botón de instalación en la interfaz
       installBtn.style.display = 'inline-block';
     });
 
     installBtn.addEventListener('click', () => {
       if (!deferredPrompt) return;
-      // Lanza el diálogo nativo de instalación de Chrome
       deferredPrompt.prompt();
-      deferredPrompt.userChoice.then((choiceResult) => {
-        if (choiceResult.outcome === 'accepted') {
-          console.log('El usuario instaló la PWA');
-        }
+      deferredPrompt.userChoice.then(() => {
         deferredPrompt = null;
         installBtn.style.display = 'none';
       });
     });
   </script>
-</body>
-</html>

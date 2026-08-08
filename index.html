@@ -1,623 +1,2351 @@
+```html
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>Notas</title>
-  
-  <!-- Meta etiquetas PWA   -->
-  <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#F8F9FA">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="apple-mobile-web-app-title" content="Notas">
-  <link rel="apple-touch-icon" href="icon-192.png">
+<meta charset="UTF-8">
 
-  <!-- Iconos Lucide (CDN) -->
-  <script src="https://unpkg.com/lucide@latest"></script>
+<meta name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 
-  <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      user-select: none;
-      -webkit-user-select: none;
-      -webkit-touch-callout: none;
+<meta name="theme-color" content="#F8F9FA">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Notas">
+
+<link rel="manifest" href="./manifest.json">
+
+<title>Notas</title>
+
+<style>
+
+:root {
+    --bg: #F8F9FA;
+
+    --black: #1C1C1E;
+    --red: #FF3B30;
+    --blue: #007AFF;
+
+    /* Verde normal */
+    --green: #34C759;
+
+    /* Verde durante el cronómetro.
+       La diferencia es MUY sutil. */
+    --green-secret: #31B953;
+
+    --yellow: #FFCC00;
+
+    --panel: rgba(255,255,255,.94);
+
+    --shadow:
+        0 5px 20px rgba(0,0,0,.09);
+
+    --safe-top:
+        env(safe-area-inset-top, 0px);
+
+    --safe-bottom:
+        env(safe-area-inset-bottom, 0px);
+}
+
+* {
+    box-sizing: border-box;
+
+    margin: 0;
+    padding: 0;
+
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+}
+
+html,
+body {
+
+    width: 100%;
+    height: 100%;
+
+    overflow: hidden;
+
+    background: var(--bg);
+
+    font-family:
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        Roboto,
+        Arial,
+        sans-serif;
+}
+
+body {
+    overscroll-behavior: none;
+}
+
+button,
+input {
+    font: inherit;
+}
+
+
+/* ==========================================================
+   APP
+========================================================== */
+
+#app {
+
+    position: fixed;
+
+    inset: 0;
+
+    overflow: hidden;
+
+    background: var(--bg);
+}
+
+
+/* ==========================================================
+   CANVAS
+========================================================== */
+
+#canvas {
+
+    position: absolute;
+
+    inset: 0;
+
+    width: 100%;
+    height: 100%;
+
+    display: block;
+
+    background: white;
+
+    touch-action: none;
+}
+
+
+/* ==========================================================
+   HEADER
+========================================================== */
+
+header {
+
+    position: absolute;
+
+    z-index: 20;
+
+    top: 0;
+    left: 0;
+    right: 0;
+
+    height:
+        calc(
+            60px +
+            var(--safe-top)
+        );
+
+    padding:
+        var(--safe-top)
+        14px
+        0;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: flex-end;
+
+    pointer-events: none;
+}
+
+#save {
+
+    pointer-events: auto;
+
+    border: 0;
+
+    padding: 10px 17px;
+
+    border-radius: 18px;
+
+    background: #007AFF;
+
+    color: white;
+
+    font-size: 14px;
+
+    font-weight: 600;
+
+    box-shadow:
+        0 3px 10px rgba(0,0,0,.10);
+
+    transition:
+        transform .15s,
+        opacity .2s;
+}
+
+#save:active {
+
+    transform: scale(.96);
+}
+
+#save:disabled {
+
+    opacity: .5;
+}
+
+
+/* ==========================================================
+   PALETA
+========================================================== */
+
+#palette {
+
+    position: absolute;
+
+    z-index: 20;
+
+    left: 10px;
+
+    top: 50%;
+
+    transform:
+        translateY(-50%);
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 14px;
+
+    padding: 10px 7px;
+
+    border-radius: 20px;
+
+    background: var(--panel);
+
+    box-shadow: var(--shadow);
+
+    backdrop-filter: blur(12px);
+
+    -webkit-backdrop-filter: blur(12px);
+}
+
+.color {
+
+    width: 25px;
+    height: 25px;
+
+    padding: 0;
+
+    border: 0;
+
+    border-radius: 50%;
+
+    cursor: pointer;
+
+    position: relative;
+
+    box-shadow:
+        0 1px 4px rgba(0,0,0,.15);
+}
+
+.color.active::after {
+
+    content: "";
+
+    position: absolute;
+
+    inset: -4px;
+
+    border:
+        1.5px solid
+        rgba(0,0,0,.28);
+
+    border-radius: 50%;
+}
+
+
+/* Colores */
+
+.black {
+    background: var(--black);
+}
+
+.red {
+    background: var(--red);
+}
+
+.blue {
+    background: var(--blue);
+}
+
+.green {
+    background: var(--green);
+}
+
+.yellow {
+    background: var(--yellow);
+}
+
+
+/*
+    ESTE ES EL EFECTO SECRETO.
+
+    Cuando comienza el cronómetro:
+
+    #palette.secret .green
+
+    cambia solamente un poco.
+*/
+
+#palette.secret .green {
+
+    background:
+        var(--green-secret);
+}
+
+
+/* ==========================================================
+   BARRA INFERIOR
+========================================================== */
+
+#toolbar {
+
+    position: absolute;
+
+    z-index: 20;
+
+    left: 50%;
+
+    bottom:
+        calc(
+            14px +
+            var(--safe-bottom)
+        );
+
+    transform:
+        translateX(-50%);
+
+    width:
+        min(
+            92vw,
+            430px
+        );
+
+    min-height: 58px;
+
+    padding: 7px 10px;
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 8px;
+
+    border-radius: 30px;
+
+    background: var(--panel);
+
+    box-shadow: var(--shadow);
+
+    backdrop-filter: blur(12px);
+
+    -webkit-backdrop-filter: blur(12px);
+}
+
+
+/* ==========================================================
+   BOTONES DE HERRAMIENTA
+========================================================== */
+
+.tool {
+
+    width: 44px;
+    height: 44px;
+
+    flex: 0 0 44px;
+
+    border: 0;
+
+    border-radius: 50%;
+
+    background: transparent;
+
+    color: #777;
+
+    display: grid;
+
+    place-items: center;
+
+    position: relative;
+
+    touch-action: none;
+}
+
+.tool.active {
+
+    color: #007AFF;
+
+    background:
+        rgba(0,122,255,.10);
+}
+
+.tool svg {
+
+    width: 21px;
+    height: 21px;
+
+    fill: none;
+
+    stroke: currentColor;
+
+    stroke-width: 2;
+
+    stroke-linecap: round;
+
+    stroke-linejoin: round;
+
+    pointer-events: none;
+}
+
+
+/* ==========================================================
+   SLIDER
+========================================================== */
+
+.slider-container {
+
+    flex: 1;
+
+    display: flex;
+
+    align-items: center;
+
+    min-width: 0;
+}
+
+#size {
+
+    width: 100%;
+
+    accent-color: #007AFF;
+}
+
+
+/* ==========================================================
+   TAMAÑO
+========================================================== */
+
+#sizeValue {
+
+    width: 38px;
+
+    text-align: right;
+
+    color: #888;
+
+    font-size: 12px;
+
+    font-variant-numeric:
+        tabular-nums;
+}
+
+
+/* ==========================================================
+   INDICADOR SECRETO
+========================================================== */
+
+#secretIndicator {
+
+    position: absolute;
+
+    z-index: 30;
+
+    left: 50%;
+
+    top: 50%;
+
+    transform:
+        translate(-50%,-50%);
+
+    width: 10px;
+    height: 10px;
+
+    border-radius: 50%;
+
+    background:
+        rgba(255,255,255,0);
+
+    pointer-events: none;
+
+    opacity: 0;
+
+    transition:
+        opacity .2s;
+}
+
+
+/*
+    NO mostramos ningún contador.
+
+    Este elemento solamente sirve
+    para lógica interna.
+*/
+
+#secretIndicator.active {
+
+    opacity: 0;
+}
+
+
+/* ==========================================================
+   TOAST
+========================================================== */
+
+#toast {
+
+    position: absolute;
+
+    z-index: 40;
+
+    left: 50%;
+
+    bottom:
+        calc(
+            88px +
+            var(--safe-bottom)
+        );
+
+    transform:
+        translate(-50%,10px);
+
+    opacity: 0;
+
+    padding:
+        8px 13px;
+
+    border-radius: 12px;
+
+    background:
+        rgba(30,30,32,.88);
+
+    color: white;
+
+    font-size: 12px;
+
+    pointer-events: none;
+
+    transition:
+        opacity .2s,
+        transform .2s;
+}
+
+#toast.show {
+
+    opacity: 1;
+
+    transform:
+        translate(-50%,0);
+}
+
+
+/* ==========================================================
+   RESPONSIVE
+========================================================== */
+
+@media (max-width:380px) {
+
+    #palette {
+        left: 7px;
     }
 
-    body, html {
-      width: 100%;
-      height: 100%;
-      overflow: hidden;
-      background-color: #F8F9FA;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    .color {
+        width: 23px;
+        height: 23px;
     }
 
-    #app-container {
-      display: flex;
-      flex-direction: column;
-      width: 100vw;
-      height: 100vh;
-      height: 100dvh;
-      position: relative;
-    }
+    #toolbar {
 
-    /* Barra Superior */
-    header {
-      height: 56px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 16px;
-      background-color: #F8F9FA;
-      z-index: 10;
-      flex-shrink: 0;
-      border-bottom: 1px solid rgba(0,0,0,0.05);
+        width:
+            calc(
+                100vw - 82px
+            );
     }
+}
 
-    .header-left {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .header-title {
-      font-size: 18px;
-      font-weight: 600;
-      color: #1A1A1A;
-    }
-
-    .header-right {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .install-pwa-btn {
-      display: none;
-      align-items: center;
-      gap: 4px;
-      background-color: rgba(0, 122, 255, 0.1);
-      color: #007AFF;
-      border: none;
-      padding: 6px 12px;
-      border-radius: 16px;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: background-color 0.2s ease;
-    }
-
-    .save-btn {
-      background-color: #007AFF;
-      color: white;
-      border: none;
-      padding: 6px 14px;
-      border-radius: 18px;
-      font-size: 14px;
-      font-weight: 500;
-      cursor: pointer;
-      box-shadow: 0 2px 6px rgba(0, 122, 255, 0.2);
-      transition: all 0.2s;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .save-btn:disabled {
-      background-color: #A0C4FF;
-      cursor: not-allowed;
-    }
-
-    /* Áreas Principales */
-    main {
-      flex: 1;
-      position: relative;
-      background-color: #F8F9FA;
-      overflow: hidden;
-    }
-
-    canvas {
-      width: 100%;
-      height: 100%;
-      display: block;
-      touch-action: none;
-    }
-
-    /* Paleta Vertical Izquierda */
-    .color-palette {
-      position: absolute;
-      left: 10px;
-      top: 45%;
-      transform: translateY(-50%);
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-      background: rgba(255, 255, 255, 0.9);
-      backdrop-filter: blur(10px);
-      padding: 10px 6px;
-      border-radius: 20px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.06);
-      z-index: 10;
-      transition: opacity 0.2s;
-    }
-
-    .color-dot {
-      width: 24px;
-      height: 24px;
-      border-radius: 50%;
-      cursor: pointer;
-      position: relative;
-      transition: transform 0.15s ease;
-    }
-
-    .color-dot.active {
-      transform: scale(1.15);
-    }
-
-    .color-dot.active::after {
-      content: '';
-      position: absolute;
-      top: -3px; left: -3px; right: -3px; bottom: -3px;
-      border: 2px solid rgba(0,0,0,0.15);
-      border-radius: 50%;
-    }
-
-    .color-black  { background-color: #1C1C1E; }
-    .color-red    { background-color: #FF3B30; }
-    .color-blue   { background-color: #007AFF; }
-    .color-green  { background-color: #34C759; }
-    .color-yellow { background-color: #FFCC00; }
-
-    /* Barra Flotante Inferior */
-    .bottom-bar {
-      position: absolute;
-      bottom: calc(14px + env(safe-area-inset-bottom));
-      left: 50%;
-      transform: translateX(-50%);
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      background: rgba(255, 255, 255, 0.92);
-      backdrop-filter: blur(12px);
-      padding: 6px 14px;
-      border-radius: 28px;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.1);
-      z-index: 10;
-      max-width: 90vw;
-      transition: opacity 0.2s;
-    }
-
-    .tool-btn {
-      background: none;
-      border: none;
-      color: #666;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 34px;
-      height: 34px;
-      border-radius: 50%;
-      cursor: pointer;
-    }
-
-    .tool-btn.active {
-      color: #007AFF;
-      background-color: rgba(0, 122, 255, 0.12);
-    }
-
-    .thickness-slider {
-      width: 80px;
-      accent-color: #007AFF;
-    }
-
-    /* Overlay de Cuenta atrás */
-    #status-overlay {
-      position: absolute;
-      top: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(0, 0, 0, 0.8);
-      color: white;
-      padding: 8px 18px;
-      border-radius: 20px;
-      font-size: 14px;
-      font-weight: 500;
-      z-index: 20;
-      display: none;
-      backdrop-filter: blur(4px);
-    }
-  </style>
+</style>
 </head>
+
+
 <body>
 
-  <div id="app-container">
+<div id="app">
+
+
+    <!-- ======================================================
+         CANVAS
+    ======================================================= -->
+
+    <canvas id="canvas"></canvas>
+
+
+    <!-- ======================================================
+         HEADER
+    ======================================================= -->
+
     <header>
-      <div class="header-left">
-        <span class="header-title">Mi Nota</span>
-      </div>
-      <div class="header-right">
-        <button class="install-pwa-btn" id="install-btn">
-          <i data-lucide="download" style="width:14px; height:14px;"></i> Instalar app
+
+        <button id="save">
+            Guardar
         </button>
-        <button class="save-btn" id="save-btn" title="Mantén pulsado 1 seg para guardar">Mantén para Guardar</button>
-      </div>
+
     </header>
 
-    <main>
-      <div id="status-overlay">Iniciando...</div>
 
-      <div class="color-palette" id="palette">
-        <div class="color-dot color-black active" data-color="#1C1C1E"></div>
-        <div class="color-dot color-red" data-color="#FF3B30"></div>
-        <div class="color-dot color-blue" data-color="#007AFF"></div>
-        <div class="color-dot color-green" data-color="#34C759"></div>
-        <div class="color-dot color-yellow" data-color="#FFCC00"></div>
-      </div>
+    <!-- ======================================================
+         PALETA
+    ======================================================= -->
 
-      <canvas id="paintCanvas"></canvas>
+    <div id="palette">
 
-      <div class="bottom-bar" id="bottom-bar">
-        <button class="tool-btn active" id="pencil-btn">
-          <i data-lucide="pencil"></i>
+        <button
+            class="color black active"
+            data-color="#1C1C1E">
         </button>
-        <button class="tool-btn" id="eraser-btn">
-          <i data-lucide="eraser"></i>
+
+        <button
+            class="color red"
+            data-color="#FF3B30">
         </button>
-        <input type="range" class="thickness-slider" id="thickness-slider" min="1" max="30" value="4">
-      </div>
-    </main>
-  </div>
 
-  <script>
-    lucide.createIcons();
+        <button
+            class="color blue"
+            data-color="#007AFF">
+        </button>
 
-    const canvas = document.getElementById('paintCanvas');
-    const ctx = canvas.getContext('2d');
-    const saveBtn = document.getElementById('save-btn');
-    const pencilBtn = document.getElementById('pencil-btn');
-    const eraserBtn = document.getElementById('eraser-btn');
-    const thicknessSlider = document.getElementById('thickness-slider');
-    const colorDots = document.querySelectorAll('.color-dot');
-    const installBtn = document.getElementById('install-btn');
-    const statusOverlay = document.getElementById('status-overlay');
-    const palette = document.getElementById('palette');
-    const bottomBar = document.getElementById('bottom-bar');
+        <button
+            class="color green"
+            data-color="#34C759">
+        </button>
 
-    const STATE_RECORDING = 1;
-    const STATE_WAITING = 2;
-    const STATE_PLAYING = 3;
-    let currentState = STATE_RECORDING;
+        <button
+            class="color yellow"
+            data-color="#FFCC00">
+        </button>
 
-    let currentColor = '#1C1C1E';
-    let currentThickness = 4;
-    let isEraser = false;
-    let isDrawing = false;
-    let dpr = window.devicePixelRatio || 1;
+    </div>
 
-    let savedDrawingData = [];  
-    let frozenDrawingData = [];
-    let currentStroke = null;
 
-    function resizeCanvas() {
-      const rect = canvas.getBoundingClientRect();
-      dpr = window.devicePixelRatio || 1;
-      
-      canvas.width = rect.width * dpr;
-      canvas.height = rect.height * dpr;
-      ctx.scale(dpr, dpr);
-      
-      redrawCanvas();
-    }
+    <!-- ======================================================
+         BARRA
+    ======================================================= -->
 
-    function redrawCanvas() {
-      const rect = canvas.getBoundingClientRect();
-      ctx.clearRect(0, 0, rect.width, rect.height);
-      
-      const dataToDraw = currentState === STATE_PLAYING ? frozenDrawingData : savedDrawingData;
-      
-      dataToDraw.forEach(stroke => {
-        if (!stroke.points || stroke.points.length === 0) return;
-        setupContext(stroke.isEraser, stroke.color, stroke.thickness);
-        
-        if (stroke.points.length === 1) {
-          ctx.beginPath();
-          ctx.arc(stroke.points[0].x, stroke.points[0].y, stroke.thickness / 2, 0, Math.PI * 2);
-          ctx.fill();
-        } else {
-          ctx.beginPath();
-          ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
-          for (let i = 1; i < stroke.points.length; i++) {
-            ctx.lineTo(stroke.points[i].x, stroke.points[i].y);
-          }
-          ctx.stroke();
+    <div id="toolbar">
+
+
+        <!-- LÁPIZ -->
+
+        <button
+            id="pencil"
+            class="tool active"
+            aria-label="Lápiz">
+
+            <svg viewBox="0 0 24 24">
+
+                <path
+                    d="
+                    M3 17.5
+                    13.5 7
+                    17 10.5
+                    6.5 21
+                    H3
+                    V17.5Z">
+                </path>
+
+                <path
+                    d="
+                    M13.5 7
+                    16 4.5
+                    a2.1 2.1 0 0 1 3 0
+                    l1.5 1.5
+                    a2.1 2.1 0 0 1 0 3
+                    L18 11.5">
+                </path>
+
+            </svg>
+
+        </button>
+
+
+        <!-- GOMA -->
+
+        <button
+            id="eraser"
+            class="tool"
+            aria-label="Goma">
+
+            <svg viewBox="0 0 24 24">
+
+                <path
+                    d="
+                    m7 21
+                    11.7-11.7
+                    a2.8 2.8 0 0 0 0-4
+                    L17.7 4.3
+                    a2.8 2.8 0 0 0-4 0
+                    L2 16
+                    l5 5Z">
+                </path>
+
+                <path d="M2 16h11">
+                </path>
+
+            </svg>
+
+        </button>
+
+
+        <!-- GROSOR -->
+
+        <div class="slider-container">
+
+            <input
+                id="size"
+                type="range"
+                min="1"
+                max="30"
+                value="4">
+
+        </div>
+
+
+        <span id="sizeValue">
+            4 px
+        </span>
+
+    </div>
+
+
+    <!-- INDICADOR INTERNO -->
+
+    <div id="secretIndicator"></div>
+
+
+    <!-- TOAST -->
+
+    <div id="toast"></div>
+
+</div>
+
+
+<script>
+
+"use strict";
+
+
+/* ==========================================================
+   ELEMENTOS
+========================================================== */
+
+const canvas =
+    document.getElementById("canvas");
+
+const ctx =
+    canvas.getContext("2d");
+
+
+const saveButton =
+    document.getElementById("save");
+
+const pencil =
+    document.getElementById("pencil");
+
+const eraser =
+    document.getElementById("eraser");
+
+const palette =
+    document.getElementById("palette");
+
+const sizeSlider =
+    document.getElementById("size");
+
+const sizeValue =
+    document.getElementById("sizeValue");
+
+const toast =
+    document.getElementById("toast");
+
+
+const colors =
+    document.querySelectorAll(".color");
+
+
+/* ==========================================================
+   ESTADOS
+========================================================== */
+
+const RECORDING =
+    1;
+
+const FREE_DRAW =
+    2;
+
+const REVEAL =
+    3;
+
+
+let state =
+    RECORDING;
+
+
+/* ==========================================================
+   HERRAMIENTA
+========================================================== */
+
+let currentColor =
+    "#1C1C1E";
+
+let currentSize =
+    4;
+
+let erasing =
+    false;
+
+
+/* ==========================================================
+   DATOS DEL DIBUJO
+========================================================== */
+
+/*
+    Esta variable contiene
+    el dibujo secreto.
+
+    Ejemplo:
+
+    [
+        {
+            color: "#1C1C1E",
+            thickness: 4,
+            isEraser: false,
+            points: [
+                {
+                    x: 100,
+                    y: 200,
+                    t: 0
+                },
+                ...
+            ]
         }
-      });
-    }
+    ]
+*/
 
-    window.addEventListener('resize', resizeCanvas);
-    setTimeout(resizeCanvas, 50);
+let savedDrawingData =
+    [];
 
-    function getCanvasCoords(e) {
-      const rect = canvas.getBoundingClientRect();
-      let clientX, clientY;
 
-      if (e.touches && e.touches.length > 0) {
-        clientX = e.touches[0].clientX;
-        clientY = e.touches[0].clientY;
-      } else if (e.changedTouches && e.changedTouches.length > 0) {
-        clientX = e.changedTouches[0].clientX;
-        clientY = e.changedTouches[0].clientY;
-      } else {
-        clientX = e.clientX;
-        clientY = e.clientY;
-      }
+/* ==========================================================
+   VIDEO
+========================================================== */
 
-      return {
-        x: clientX - rect.left,
-        y: clientY - rect.top,
-        t: Date.now()
-      };
-    }
+/*
+    MUY IMPORTANTE:
 
-    function setupContext(eraser, color, thickness) {
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-      ctx.lineWidth = thickness;
-      
-      if (eraser) {
-        ctx.globalCompositeOperation = 'destination-out';
-        ctx.fillStyle = 'rgba(0,0,0,1)';
-      } else {
-        ctx.globalCompositeOperation = 'source-over';
-        ctx.strokeStyle = color;
-        ctx.fillStyle = color;
-      }
-    }
+    NO grabamos la pantalla.
 
-    function startDrawing(e) {
-      if (currentState !== STATE_RECORDING) return;
-      isDrawing = true;
-      const point = getCanvasCoords(e);
+    Grabamos únicamente:
 
-      currentStroke = {
-        color: currentColor,
-        thickness: currentThickness,
-        isEraser: isEraser,
-        startTime: point.t,
-        points: [{ x: point.x, y: point.y, t: point.t }]
-      };
+        canvas.captureStream()
 
-      setupContext(isEraser, currentColor, currentThickness);
-      ctx.beginPath();
-      ctx.moveTo(point.x, point.y);
-    }
+    Por tanto el vídeo contiene
+    exclusivamente lo que aparece
+    dentro del canvas.
+*/
 
-    function draw(e) {
-      if (!isDrawing || currentState !== STATE_RECORDING) return;
-      const point = getCanvasCoords(e);
+let mediaRecorder =
+    null;
 
-      currentStroke.points.push({ x: point.x, y: point.y, t: point.t });
+let recordedChunks =
+    [];
 
-      ctx.lineTo(point.x, point.y);
-      ctx.stroke();
-    }
+let recordedVideoBlob =
+    null;
 
-    function stopDrawing() {
-      if (!isDrawing) return;
-      isDrawing = false;
-      ctx.closePath();
 
-      if (currentStroke && currentStroke.points.length > 0) {
-        savedDrawingData.push(currentStroke);
-      }
-      currentStroke = null;
-    }
+/* ==========================================================
+   GRABACIÓN DEL CANVAS
+========================================================== */
 
-    // Eventos de dibujo
-    canvas.addEventListener('mousedown', startDrawing);
-    canvas.addEventListener('mousemove', draw);
-    canvas.addEventListener('mouseup', stopDrawing);
-    canvas.addEventListener('mouseleave', stopDrawing);
+function startCanvasVideoRecording() {
 
-    canvas.addEventListener('touchstart', (e) => { e.preventDefault(); startDrawing(e); }, { passive: false });
-    canvas.addEventListener('touchmove', (e) => { e.preventDefault(); draw(e); }, { passive: false });
-    canvas.addEventListener('touchend', (e) => { e.preventDefault(); stopDrawing(); }, { passive: false });
+    /*
+        Algunos navegadores móviles
+        no soportan MediaRecorder.
+    */
 
-    // LONG PRESS EN BOTÓN GUARDAR (1 SEGUNDO DE PULSACIÓN)
-    let pressTimer = null;
-    const LONG_PRESS_DURATION = 1000;
+    if (
+        !canvas.captureStream ||
+        !window.MediaRecorder
+    ) {
 
-    function startPress(e) {
-      if (currentState !== STATE_RECORDING) return;
-      cancelPress();
-      pressTimer = setTimeout(() => {
-        executeSaveAndPlaybackSequence();
-      }, LONG_PRESS_DURATION);
-    }
+        console.warn(
+            "MediaRecorder no disponible"
+        );
 
-    function cancelPress() {
-      if (pressTimer) {
-        clearTimeout(pressTimer);
-        pressTimer = null;
-      }
-    }
-
-    saveBtn.addEventListener('mousedown', startPress);
-    saveBtn.addEventListener('mouseup', cancelPress);
-    saveBtn.addEventListener('mouseleave', cancelPress);
-    saveBtn.addEventListener('touchstart', startPress, { passive: true });
-    saveBtn.addEventListener('touchend', cancelPress);
-
-    // SECUENCIA: CONGELAR, ESPERAR 5 SEGUNDOS Y REPRODUCIR
-    function executeSaveAndPlaybackSequence() {
-      if (savedDrawingData.length === 0) {
-        alert('Dibuja algo primero en el lienzo.');
         return;
-      }
 
-      currentState = STATE_WAITING;
-      saveBtn.disabled = true;
-      palette.style.opacity = '0.3';
-      bottomBar.style.opacity = '0.3';
-
-      frozenDrawingData = JSON.parse(JSON.stringify(savedDrawingData));
-
-      const rect = canvas.getBoundingClientRect();
-      ctx.clearRect(0, 0, rect.width, rect.height);
-
-      let secondsLeft = 5;
-      statusOverlay.style.display = 'block';
-      statusOverlay.textContent = `Reproduciendo en ${secondsLeft}s...`;
-
-      const countdownInterval = setInterval(() => {
-        secondsLeft--;
-        if (secondsLeft > 0) {
-          statusOverlay.textContent = `Reproduciendo en ${secondsLeft}s...`;
-        } else {
-          clearInterval(countdownInterval);
-          statusOverlay.style.display = 'none';
-          
-          playDrawingInRealTime();
-        }
-      }, 1000);
     }
 
-    // REPRODUCCIÓN PROGRESIVA PUNTO A PUNTO
-    function playDrawingInRealTime() {
-      currentState = STATE_PLAYING;
-      const rect = canvas.getBoundingClientRect();
-      ctx.clearRect(0, 0, rect.width, rect.height);
 
-      if (frozenDrawingData.length === 0) return;
+    try {
 
-      // Descomponemos todos los puntos reteniendo su orden y tiempos
-      let timelinePoints = [];
-      const globalStartTime = frozenDrawingData[0].points[0].t;
+        const stream =
+            canvas.captureStream(30);
 
-      frozenDrawingData.forEach(stroke => {
-        stroke.points.forEach((pt, index) => {
-          timelinePoints.push({
-            x: pt.x,
-            y: pt.y,
-            delay: pt.t - globalStartTime,
-            color: stroke.color,
-            thickness: stroke.thickness,
-            isEraser: stroke.isEraser,
-            isStart: index === 0,
-            isSinglePoint: stroke.points.length === 1
-          });
-        });
-      });
 
-      let animationStartTime = null;
-      let pointIndex = 0;
-      let lastPoint = null;
+        let mimeType =
+            "";
 
-      function renderFrame(timestamp) {
-        if (!animationStartTime) animationStartTime = timestamp;
-        const elapsedTime = timestamp - animationStartTime;
 
-        // Procesa solo los puntos cuyo tiempo ya ha llegado en este frame
-        while (pointIndex < timelinePoints.length && timelinePoints[pointIndex].delay <= elapsedTime) {
-          const pt = timelinePoints[pointIndex];
+        /*
+            Elegimos el formato disponible.
+        */
 
-          setupContext(pt.isEraser, pt.color, pt.thickness);
+        if (
+            MediaRecorder.isTypeSupported(
+                "video/webm;codecs=vp9"
+            )
+        ) {
 
-          if (pt.isStart) {
-            // Iniciar un nuevo trazo
-            if (pt.isSinglePoint) {
-              ctx.beginPath();
-              ctx.arc(pt.x, pt.y, pt.thickness / 2, 0, Math.PI * 2);
-              ctx.fill();
+            mimeType =
+                "video/webm;codecs=vp9";
+
+        }
+
+        else if (
+            MediaRecorder.isTypeSupported(
+                "video/webm;codecs=vp8"
+            )
+        ) {
+
+            mimeType =
+                "video/webm;codecs=vp8";
+
+        }
+
+        else if (
+            MediaRecorder.isTypeSupported(
+                "video/webm"
+            )
+        ) {
+
+            mimeType =
+                "video/webm";
+
+        }
+
+
+        mediaRecorder =
+            mimeType
+
+                ? new MediaRecorder(
+                    stream,
+                    {
+                        mimeType,
+                        videoBitsPerSecond:
+                            2500000
+                    }
+                )
+
+                : new MediaRecorder(
+                    stream
+                );
+
+
+        recordedChunks =
+            [];
+
+
+        mediaRecorder.ondataavailable =
+            event => {
+
+                if (
+                    event.data &&
+                    event.data.size > 0
+                ) {
+
+                    recordedChunks.push(
+                        event.data
+                    );
+
+                }
+
+            };
+
+
+        mediaRecorder.onstop =
+            () => {
+
+                recordedVideoBlob =
+                    new Blob(
+                        recordedChunks,
+                        {
+                            type:
+                                mediaRecorder.mimeType ||
+                                "video/webm"
+                        }
+                    );
+
+
+                console.log(
+                    "Vídeo guardado:",
+                    recordedVideoBlob.size,
+                    "bytes"
+                );
+
+            };
+
+
+        mediaRecorder.start(
+            100
+        );
+
+
+        console.log(
+            "Grabación del canvas iniciada"
+        );
+
+    }
+
+    catch(error) {
+
+        console.error(
+            "No se pudo iniciar la grabación:",
+            error
+        );
+
+    }
+
+}
+
+
+/* ==========================================================
+   PARAR VÍDEO
+========================================================== */
+
+function stopCanvasVideoRecording() {
+
+    return new Promise(
+        resolve => {
+
+            if (
+                !mediaRecorder ||
+                mediaRecorder.state ===
+                    "inactive"
+            ) {
+
+                resolve();
+                return;
+
             }
-            lastPoint = pt;
-          } else if (lastPoint) {
-            // Trazar una línea recta continua desde el punto anterior al actual
-            ctx.beginPath();
-            ctx.moveTo(lastPoint.x, lastPoint.y);
-            ctx.lineTo(pt.x, pt.y);
-            ctx.stroke();
-            lastPoint = pt;
-          }
 
-          pointIndex++;
+
+            mediaRecorder.onstop =
+                () => {
+
+                    recordedVideoBlob =
+                        new Blob(
+                            recordedChunks,
+                            {
+                                type:
+                                    mediaRecorder.mimeType ||
+                                    "video/webm"
+                            }
+                        );
+
+
+                    console.log(
+                        "Vídeo final guardado:",
+                        recordedVideoBlob.size,
+                        "bytes"
+                    );
+
+
+                    resolve();
+
+                };
+
+
+            mediaRecorder.stop();
+
         }
+    );
 
-        if (pointIndex < timelinePoints.length) {
-          requestAnimationFrame(renderFrame);
-        } else {
-          currentState = STATE_RECORDING;
-          saveBtn.disabled = false;
-          palette.style.opacity = '1';
-          bottomBar.style.opacity = '1';
-        }
-      }
+}
 
-      requestAnimationFrame(renderFrame);
+
+/* ==========================================================
+   CANVAS RESIZE
+========================================================== */
+
+function resizeCanvas() {
+
+    const rect =
+        canvas.getBoundingClientRect();
+
+
+    const dpr =
+        Math.max(
+            1,
+            Math.min(
+                window.devicePixelRatio || 1,
+                3
+            )
+        );
+
+
+    canvas.width =
+        Math.round(
+            rect.width * dpr
+        );
+
+    canvas.height =
+        Math.round(
+            rect.height * dpr
+        );
+
+
+    ctx.setTransform(
+        dpr,
+        0,
+        0,
+        dpr,
+        0,
+        0
+    );
+
+
+    ctx.lineCap =
+        "round";
+
+    ctx.lineJoin =
+        "round";
+
+
+    /*
+        Fondo blanco.
+
+        El vídeo también tendrá
+        fondo blanco.
+    */
+
+    ctx.fillStyle =
+        "white";
+
+    ctx.fillRect(
+        0,
+        0,
+        rect.width,
+        rect.height
+    );
+
+}
+
+
+window.addEventListener(
+    "resize",
+    resizeCanvas
+);
+
+
+/* ==========================================================
+   COORDENADAS
+========================================================== */
+
+function getPoint(event) {
+
+    const rect =
+        canvas.getBoundingClientRect();
+
+
+    return {
+
+        x:
+            event.clientX -
+            rect.left,
+
+        y:
+            event.clientY -
+            rect.top
+
+    };
+
+}
+
+
+/* ==========================================================
+   PINTAR PUNTO
+========================================================== */
+
+function drawPoint(
+    point,
+    stroke
+) {
+
+    ctx.save();
+
+
+    if (
+        stroke.isEraser
+    ) {
+
+        ctx.globalCompositeOperation =
+            "destination-out";
+
     }
 
-    // Selector de herramientas y colores
-    colorDots.forEach(dot => {
-      dot.addEventListener('click', () => {
-        if (currentState !== STATE_RECORDING) return;
-        colorDots.forEach(d => d.classList.remove('active'));
-        dot.classList.add('active');
-        currentColor = dot.dataset.color;
-        isEraser = false;
-        pencilBtn.classList.add('active');
-        eraserBtn.classList.remove('active');
-      });
-    });
+    else {
 
-    pencilBtn.addEventListener('click', () => {
-      if (currentState !== STATE_RECORDING) return;
-      isEraser = false;
-      pencilBtn.classList.add('active');
-      eraserBtn.classList.remove('active');
-    });
+        ctx.globalCompositeOperation =
+            "source-over";
 
-    eraserBtn.addEventListener('click', () => {
-      if (currentState !== STATE_RECORDING) return;
-      isEraser = true;
-      eraserBtn.classList.add('active');
-      pencilBtn.classList.remove('active');
-    });
-
-    thicknessSlider.addEventListener('input', (e) => {
-      currentThickness = parseFloat(e.target.value);
-    });
-
-    // SERVICE WORKER PWA
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js')
-          .then(reg => console.log('Service Worker listo'))
-          .catch(err => console.error('Error SW:', err));
-      });
     }
 
-    // INSTALACIÓN PWA
-    let deferredPrompt = null;
 
-    window.addEventListener('beforeinstallprompt', (e) => {
-      e.preventDefault();
-      deferredPrompt = e;
-      installBtn.style.display = 'inline-flex';
-    });
+    ctx.fillStyle =
+        stroke.color;
 
-    installBtn.addEventListener('click', () => {
-      if (!deferredPrompt) return;
-      deferredPrompt.prompt();
-      deferredPrompt.userChoice.then((choiceResult) => {
-        if (choiceResult.outcome === 'accepted') {
-          console.log('App instalada');
+    ctx.beginPath();
+
+    ctx.arc(
+        point.x,
+        point.y,
+        Math.max(
+            stroke.thickness / 2,
+            0.5
+        ),
+        0,
+        Math.PI * 2
+    );
+
+    ctx.fill();
+
+
+    ctx.restore();
+
+}
+
+
+/* ==========================================================
+   PINTAR LÍNEA
+========================================================== */
+
+function drawLine(
+    a,
+    b,
+    stroke
+) {
+
+    ctx.save();
+
+
+    if (
+        stroke.isEraser
+    ) {
+
+        ctx.globalCompositeOperation =
+            "destination-out";
+
+    }
+
+    else {
+
+        ctx.globalCompositeOperation =
+            "source-over";
+
+    }
+
+
+    ctx.strokeStyle =
+        stroke.color;
+
+    ctx.lineWidth =
+        stroke.thickness;
+
+    ctx.lineCap =
+        "round";
+
+    ctx.lineJoin =
+        "round";
+
+
+    ctx.beginPath();
+
+    ctx.moveTo(
+        a.x,
+        a.y
+    );
+
+    ctx.lineTo(
+        b.x,
+        b.y
+    );
+
+    ctx.stroke();
+
+
+    ctx.restore();
+
+}
+
+
+/* ==========================================================
+   DIBUJO
+========================================================== */
+
+let drawing =
+    false;
+
+let currentStroke =
+    null;
+
+let recordingStart =
+    null;
+
+
+canvas.addEventListener(
+    "pointerdown",
+    event => {
+
+        if (
+            state === REVEAL
+        ) {
+            return;
         }
-        deferredPrompt = null;
-        installBtn.style.display = 'none';
-      });
-    });
-  </script>
+
+
+        event.preventDefault();
+
+
+        drawing =
+            true;
+
+
+        const point =
+            getPoint(event);
+
+
+        /*
+            Primer punto del tiempo
+            absoluto de la grabación.
+        */
+
+        if (
+            state === RECORDING &&
+            recordingStart === null
+        ) {
+
+            recordingStart =
+                performance.now();
+
+        }
+
+
+        currentStroke = {
+
+            color:
+                currentColor,
+
+            thickness:
+                currentSize,
+
+            isEraser:
+                erasing,
+
+            points: [
+
+                {
+
+                    x:
+                        point.x,
+
+                    y:
+                        point.y,
+
+                    t:
+                        state === RECORDING
+
+                            ? performance.now() -
+                              recordingStart
+
+                            : 0
+
+                }
+
+            ]
+
+        };
+
+
+        drawPoint(
+            point,
+            currentStroke
+        );
+
+
+        try {
+
+            canvas.setPointerCapture(
+                event.pointerId
+            );
+
+        } catch (_) {}
+
+    },
+    {
+        passive: false
+    }
+);
+
+
+canvas.addEventListener(
+    "pointermove",
+    event => {
+
+        if (
+            !drawing ||
+            !currentStroke ||
+            state === REVEAL
+        ) {
+            return;
+        }
+
+
+        event.preventDefault();
+
+
+        const point =
+            getPoint(event);
+
+
+        const previous =
+            currentStroke.points[
+                currentStroke.points.length - 1
+            ];
+
+
+        currentStroke.points.push({
+
+            x:
+                point.x,
+
+            y:
+                point.y,
+
+            t:
+                state === RECORDING
+
+                    ? performance.now() -
+                      recordingStart
+
+                    : 0
+
+        });
+
+
+        drawLine(
+            previous,
+            point,
+            currentStroke
+        );
+
+    },
+    {
+        passive: false
+    }
+);
+
+
+function finishDrawing(event) {
+
+    if (!drawing) {
+        return;
+    }
+
+
+    drawing =
+        false;
+
+
+    /*
+        SOLO FASE 1.
+
+        En FASE 2 no se almacena.
+    */
+
+    if (
+        state === RECORDING &&
+        currentStroke
+    ) {
+
+        savedDrawingData.push(
+            currentStroke
+        );
+
+    }
+
+
+    currentStroke =
+        null;
+
+
+    try {
+
+        canvas.releasePointerCapture(
+            event.pointerId
+        );
+
+    } catch (_) {}
+
+}
+
+
+canvas.addEventListener(
+    "pointerup",
+    finishDrawing
+);
+
+canvas.addEventListener(
+    "pointercancel",
+    finishDrawing
+);
+
+
+/* ==========================================================
+   COLORES
+========================================================== */
+
+colors.forEach(
+    button => {
+
+        button.addEventListener(
+            "click",
+            () => {
+
+                if (
+                    state === REVEAL
+                ) {
+                    return;
+                }
+
+
+                currentColor =
+                    button.dataset.color;
+
+
+                erasing =
+                    false;
+
+
+                pencil.classList.add(
+                    "active"
+                );
+
+                eraser.classList.remove(
+                    "active"
+                );
+
+
+                colors.forEach(
+                    c =>
+                        c.classList.remove(
+                            "active"
+                        )
+                );
+
+
+                button.classList.add(
+                    "active"
+                );
+
+            }
+        );
+
+    }
+);
+
+
+/* ==========================================================
+   LÁPIZ
+========================================================== */
+
+function usePencil() {
+
+    if (
+        state === REVEAL
+    ) {
+        return;
+    }
+
+
+    erasing =
+        false;
+
+
+    pencil.classList.add(
+        "active"
+    );
+
+    eraser.classList.remove(
+        "active"
+    );
+
+}
+
+
+/* ==========================================================
+   GOMA
+========================================================== */
+
+function useEraser() {
+
+    if (
+        state === REVEAL
+    ) {
+        return;
+    }
+
+
+    erasing =
+        true;
+
+
+    eraser.classList.add(
+        "active"
+    );
+
+    pencil.classList.remove(
+        "active"
+    );
+
+}
+
+
+/* ==========================================================
+   CLICK NORMAL
+========================================================== */
+
+let ignoreNextPencilClick =
+    false;
+
+
+pencil.addEventListener(
+    "click",
+    () => {
+
+        if (
+            ignoreNextPencilClick
+        ) {
+
+            ignoreNextPencilClick =
+                false;
+
+            return;
+
+        }
+
+
+        usePencil();
+
+    }
+);
+
+
+eraser.addEventListener(
+    "click",
+    () => {
+
+        useEraser();
+
+    }
+);
+
+
+/* ==========================================================
+   GROSOR
+========================================================== */
+
+sizeSlider.addEventListener(
+    "input",
+    event => {
+
+        currentSize =
+            Number(
+                event.target.value
+            );
+
+
+        sizeValue.textContent =
+            `${currentSize} px`;
+
+    }
+);
+
+
+/* ==========================================================
+   GUARDAR
+========================================================== */
+
+saveButton.addEventListener(
+    "click",
+    async () => {
+
+        if (
+            state !== RECORDING
+        ) {
+            return;
+        }
+
+
+        if (
+            savedDrawingData.length === 0
+        ) {
+
+            showToast(
+                "Dibuja algo primero"
+            );
+
+            return;
+
+        }
+
+
+        saveButton.disabled =
+            true;
+
+
+        saveButton.textContent =
+            "Guardando...";
+
+
+        /*
+            DETENEMOS EL VÍDEO.
+
+            Aquí ya tenemos:
+
+            1. savedDrawingData
+            2. recordedVideoBlob
+        */
+
+        await stopCanvasVideoRecording();
+
+
+        /*
+            Pasamos a FASE 2.
+        */
+
+        state =
+            FREE_DRAW;
+
+
+        /*
+            La pantalla se vuelve
+            completamente blanca.
+        */
+
+        clearCanvas();
+
+
+        /*
+            Importante:
+
+            El dibujo y el vídeo siguen
+            guardados en memoria.
+        */
+
+        saveButton.textContent =
+            "Guardado";
+
+
+        showToast(
+            "Guardado"
+        );
+
+    }
+);
+
+
+/* ==========================================================
+   LIMPIAR
+========================================================== */
+
+function clearCanvas() {
+
+    const rect =
+        canvas.getBoundingClientRect();
+
+
+    ctx.save();
+
+    ctx.globalCompositeOperation =
+        "source-over";
+
+
+    ctx.fillStyle =
+        "white";
+
+
+    ctx.fillRect(
+        0,
+        0,
+        rect.width,
+        rect.height
+    );
+
+
+    ctx.restore();
+
+}
+
+
+/* ==========================================================
+   TRIGGER SECRETO
+========================================================== */
+
+let longPressTimer =
+    null;
+
+let secretCountdownTimer =
+    null;
+
+
+function startSecretPress() {
+
+    if (
+        state !== FREE_DRAW
+    ) {
+        return;
+    }
+
+
+    clearTimeout(
+        longPressTimer
+    );
+
+
+    /*
+        EXACTAMENTE 2 segundos
+        manteniendo pulsado.
+    */
+
+    longPressTimer =
+        setTimeout(
+            () => {
+
+                ignoreNextPencilClick =
+                    true;
+
+
+                activateSecretTrigger();
+
+            },
+
+            2000
+        );
+
+}
+
+
+function cancelSecretPress() {
+
+    clearTimeout(
+        longPressTimer
+    );
+
+    longPressTimer =
+        null;
+
+}
+
+
+/* ==========================================================
+   PULSACIÓN LARGA DEL LÁPIZ
+========================================================== */
+
+pencil.addEventListener(
+    "pointerdown",
+    event => {
+
+        event.preventDefault();
+
+        startSecretPress();
+
+    },
+    {
+        passive: false
+    }
+);
+
+
+pencil.addEventListener(
+    "pointerup",
+    cancelSecretPress
+);
+
+
+pencil.addEventListener(
+    "pointercancel",
+    cancelSecretPress
+);
+
+
+pencil.addEventListener(
+    "pointerleave",
+    cancelSecretPress
+);
+
+
+/* ==========================================================
+   ACTIVAR CRONÓMETRO
+========================================================== */
+
+function activateSecretTrigger() {
+
+    if (
+        state !== FREE_DRAW ||
+        secretCountdownTimer !== null
+    ) {
+        return;
+    }
+
+
+    /*
+        CAMBIO DE COLOR.
+
+        Es la única confirmación visual
+        para el mago.
+    */
+
+    palette.classList.add(
+        "secret"
+    );
+
+
+    /*
+        Vibración muy ligera.
+    */
+
+    if (
+        navigator.vibrate
+    ) {
+
+        try {
+
+            navigator.vibrate(
+                35
+            );
+
+        } catch (_) {}
+
+    }
+
+
+    /*
+        CRONÓMETRO INVISIBLE.
+
+        No aparece ningún número
+        en pantalla.
+    */
+
+    const endTime =
+        performance.now() +
+        5000;
+
+
+    secretCountdownTimer =
+        setInterval(
+            () => {
+
+                if (
+                    performance.now() >=
+                    endTime
+                ) {
+
+                    clearInterval(
+                        secretCountdownTimer
+                    );
+
+
+                    secretCountdownTimer =
+                        null;
+
+
+                    /*
+                        RESTAURAMOS EL VERDE.
+                    */
+
+                    palette.classList.remove(
+                        "secret"
+                    );
+
+
+                    /*
+                        PASAMOS A REVELACIÓN.
+                    */
+
+                    revealVideo();
+
+                }
+
+            },
+
+            20
+        );
+
+}
+
+
+/* ==========================================================
+   REPRODUCIR VÍDEO
+========================================================== */
+
+function revealVideo() {
+
+    state =
+        REVEAL;
+
+
+    /*
+        Quitamos herramientas
+        funcionalmente.
+    */
+
+    saveButton.style.display =
+        "none";
+
+    palette.style.display =
+        "none";
+
+    document.getElementById(
+        "toolbar"
+    ).style.display =
+        "none";
+
+
+    /*
+        Borramos el canvas.
+    */
+
+    clearCanvas();
+
+
+    /*
+        Si por alguna razón
+        el vídeo no está disponible,
+        usamos la reproducción vectorial
+        como respaldo.
+    */
+
+    if (
+        !recordedVideoBlob
+    ) {
+
+        revealVectorDrawing();
+
+        return;
+
+    }
+
+
+    /*
+        Creamos un vídeo temporal.
+    */
+
+    const video =
+        document.createElement(
+            "video"
+        );
+
+
+    video.muted =
+        true;
+
+    video.playsInline =
+        true;
+
+    video.autoplay =
+        true;
+
+
+    video.style.position =
+        "absolute";
+
+    video.style.inset =
+        "0";
+
+    video.style.width =
+        "100%";
+
+    video.style.height =
+        "100%";
+
+    video.style.objectFit =
+        "fill";
+
+    video.style.zIndex =
+        "10";
+
+    video.style.background =
+        "white";
+
+
+    const videoURL =
+        URL.createObjectURL(
+            recordedVideoBlob
+        );
+
+
+    video.src =
+        videoURL;
+
+
+    document
+        .getElementById("app")
+        .appendChild(video);
+
+
+    video.addEventListener(
+        "ended",
+        () => {
+
+            URL.revokeObjectURL(
+                videoURL
+            );
+
+        }
+    );
+
+
+    video.play()
+        .catch(
+            error => {
+
+                console.warn(
+                    "No se pudo reproducir el vídeo:",
+                    error
+                );
+
+
+                /*
+                    Respaldo vectorial.
+                */
+
+                video.remove();
+
+                revealVectorDrawing();
+
+            }
+        );
+
+}
+
+
+/* ==========================================================
+   REVELACIÓN VECTORIAL DE RESPALDO
+========================================================== */
+
+let revealStart =
+    0;
+
+let revealStroke =
+    0;
+
+let revealPoint =
+    0;
+
+
+function revealVectorDrawing() {
+
+    clearCanvas();
+
+
+    revealStart =
+        performance.now();
+
+    revealStroke =
+        0;
+
+    revealPoint =
+        0;
+
+
+    requestAnimationFrame(
+        revealFrame
+    );
+
+}
+
+
+function revealFrame(
+    now
+) {
+
+    const elapsed =
+        now -
+        revealStart;
+
+
+    while (
+        revealStroke <
+        savedDrawingData.length
+    ) {
+
+        const stroke =
+            savedDrawingData[
+                revealStroke
+            ];
+
+
+        const points =
+            stroke.points;
+
+
+        while (
+
+            revealPoint <
+            points.length &&
+
+            points[
+                revealPoint
+            ].t <= elapsed
+
+        ) {
+
+            if (
+                revealPoint === 0
+            ) {
+
+                drawPoint(
+                    points[0],
+                    stroke
+                );
+
+            }
+
+            else {
+
+                drawLine(
+                    points[
+                        revealPoint - 1
+                    ],
+
+                    points[
+                        revealPoint
+                    ],
+
+                    stroke
+                );
+
+            }
+
+
+            revealPoint++;
+
+        }
+
+
+        if (
+            revealPoint <
+            points.length
+        ) {
+
+            break;
+
+        }
+
+
+        revealStroke++;
+
+        revealPoint =
+            0;
+
+    }
+
+
+    if (
+        revealStroke <
+        savedDrawingData.length
+    ) {
+
+        requestAnimationFrame(
+            revealFrame
+        );
+
+    }
+
+}
+
+
+/* ==========================================================
+   TOAST
+========================================================== */
+
+function showToast(
+    message
+) {
+
+    toast.textContent =
+        message;
+
+
+    toast.classList.add(
+        "show"
+    );
+
+
+    clearTimeout(
+        showToast.timer
+    );
+
+
+    showToast.timer =
+        setTimeout(
+            () => {
+
+                toast.classList.remove(
+                    "show"
+                );
+
+            },
+
+            1400
+        );
+
+}
+
+
+/* ==========================================================
+   INICIO
+========================================================== */
+
+resizeCanvas();
+
+
+/*
+    MUY IMPORTANTE:
+
+    Empezamos a grabar el canvas
+    desde el principio.
+
+    El usuario NO ve ninguna
+    indicación de que está grabando.
+*/
+
+startCanvasVideoRecording();
+
+
+</script>
+
 </body>
 </html>
+```
